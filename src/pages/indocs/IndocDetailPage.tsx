@@ -90,7 +90,7 @@ export default function IndocDetailPage() {
                 : 'border-transparent text-gray-500 hover:text-gray-700'
             }`}
           >
-            {{ json: 'Содержимое', files: 'Файлы', photos: 'Фото' }[t]}
+            {{ json: 'Json', files: 'Файлы', photos: 'Фото' }[t]}
           </button>
         ))}
       </div>

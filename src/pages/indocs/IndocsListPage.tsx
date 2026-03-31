@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
+import * as XLSX from 'xlsx'
 import { indocsApi } from '@/api/indocs'
 import type { IndocListItem } from '@/types/indoc'
 import PageHeader from '@/components/ui/PageHeader'
@@ -86,6 +87,19 @@ export default function IndocsListPage() {
     setAllItems([])
   }
 
+  function exportToExcel() {
+    const rows = sortedItems.map((item) => ({
+      'Номер': item.indoc_id,
+      'Тип': item.indoc_type_descrip,
+      'Дата создания': new Date(item.created_at).toLocaleString(),
+      'Примечание': item.indoc_txt ?? '',
+    }))
+    const ws = XLSX.utils.json_to_sheet(rows)
+    const wb = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(wb, ws, 'Входящие документы')
+    XLSX.writeFile(wb, `indocs_${dateFrom}_${dateTo}.xlsx`)
+  }
+
   return (
     <>
       <PageHeader
@@ -121,6 +135,9 @@ export default function IndocsListPage() {
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
+        <button className="btn-secondary" onClick={exportToExcel} disabled={sortedItems.length === 0}>
+          Экспорт в Excel
+        </button>
       </div>
 
       <div className="card overflow-hidden">
@@ -162,7 +179,7 @@ export default function IndocsListPage() {
                 >
                   <td className="td font-medium text-primary-600">{item.indoc_id}</td>
                   <td className="td text-gray-500">{item.indoc_type_descrip}</td>
-                  <td className="td text-gray-500">{item.created_at}</td>
+                  <td className="td text-gray-500">{new Date(item.created_at).toLocaleString()}</td>
                   <td className="td text-gray-500 max-w-xs truncate">{item.indoc_txt ?? '—'}</td>
                 </tr>
               ))}

@@ -137,8 +137,8 @@ export default function GoodDetailPage() {
               <tbody className="bg-white divide-y divide-gray-200">
                 {movementsData.items.map((m, i) => (
                   <tr key={i}>
-                    <td className="td text-gray-500">{m.outdoc_date}</td>
-                    <td className="td text-gray-500">{m.created_at}</td>
+                    <td className="td text-gray-500">{new Date(m.outdoc_date).toLocaleDateString()}</td>
+                    <td className="td text-gray-500">{new Date(m.created_at).toLocaleString()}</td>
                     <td className="td text-sm">{m.outdoc_type_descrip}</td>
                     <td className="td text-sm text-gray-500">{m.qual_type}</td>
                     <td className="td text-right font-medium">{m.qnt}</td>

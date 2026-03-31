@@ -181,8 +181,8 @@ export default function OutdocsListPage() {
                 >
                   <td className="td font-medium text-primary-600">{item.outdoc_id}</td>
                   <td className="td text-gray-500">{item.outdoc_type_descrip}</td>
-                  <td className="td text-gray-500">{item.outdoc_date}</td>
-                  <td className="td text-gray-500">{item.created_at}</td>
+                  <td className="td text-gray-500">{new Date(item.outdoc_date).toLocaleDateString()}</td>
+                  <td className="td text-gray-500">{new Date(item.created_at).toLocaleString()}</td>
                   <td className="td text-gray-500 max-w-xs truncate">{item.outdoc_txt ?? '—'}</td>
                   <td className="td">
                     {item.locked

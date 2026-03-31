@@ -1,9 +1,46 @@
 import { useState, FormEvent } from 'react'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import toast from 'react-hot-toast'
 import { indocsApi } from '@/api/indocs'
+import { goodsApi } from '@/api/goods'
+import type { GoodDetail } from '@/types/good'
 import Modal from '@/components/ui/Modal'
 import Spinner from '@/components/ui/Spinner'
+
+function GoodIdInput({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const [committed, setCommitted] = useState('')
+
+  const { data, isFetching, isError } = useQuery({
+    queryKey: ['good', committed],
+    queryFn: () => goodsApi.get(committed),
+    enabled: committed.length > 0,
+    retry: false,
+  })
+
+  const good = data?.good as GoodDetail | undefined
+
+  return (
+    <div>
+      <input
+        className="input"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        onBlur={() => setCommitted(value.trim())}
+        required
+        placeholder="good_id"
+      />
+      <div className="mt-1 min-h-[1rem] text-xs">
+        {isFetching && <span className="text-gray-400">Загрузка...</span>}
+        {!isFetching && committed && good && (
+          <span className="text-green-600">{good.good_name}</span>
+        )}
+        {!isFetching && committed && isError && (
+          <span className="text-red-500">Товар не найден</span>
+        )}
+      </div>
+    </div>
+  )
+}
 
 interface Props {
   isOpen: boolean
@@ -99,17 +136,14 @@ export default function CreateIndocModal({ isOpen, onClose }: Props) {
           </div>
 
           {items.map((row, i) => (
-            <div key={i} className="grid grid-cols-3 gap-2 items-center">
+            <div key={i} className="grid grid-cols-3 gap-2 items-start">
               <div className="col-span-2">
-                <input
-                  className="input"
+                <GoodIdInput
                   value={row.good_id}
-                  onChange={(e) => updateItem(i, 'good_id', e.target.value)}
-                  required
-                  placeholder="good_id"
+                  onChange={(v) => updateItem(i, 'good_id', v)}
                 />
               </div>
-              <div className="flex gap-1">
+              <div className="flex gap-1 items-start pt-0">
                 <input
                   type="number"
                   min="1"

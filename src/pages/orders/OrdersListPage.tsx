@@ -91,7 +91,7 @@ export default function OrdersListPage() {
                   onClick={() => navigate(`/orders/${item.order_id}`)}
                 >
                   <td className="td font-medium text-primary-600">{item.order_id}</td>
-                  <td className="td text-gray-500">{item.created_at}</td>
+                  <td className="td text-gray-500">{new Date(item.created_at).toLocaleString()}</td>
                   <td className="td">
                     <span className={`badge ${STATE_COLORS[item.state] ?? 'bg-gray-100 text-gray-600'}`}>
                       {STATE_LABELS[item.state] ?? item.state}

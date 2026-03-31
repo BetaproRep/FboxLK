@@ -47,7 +47,7 @@ export default function OrderDetailPage() {
     <>
       <PageHeader
         title={`Заказ ${order.order_id ?? orderId}`}
-        subtitle={order.created_at}
+        subtitle={new Date(order.created_at).toLocaleString()}
         actions={
           <div className="flex gap-2">
             <button className="btn-secondary" onClick={() => navigate('/orders')}>
@@ -140,7 +140,7 @@ export default function OrderDetailPage() {
                 {order.events.map((e, i) => (
                   <tr key={i}>
                     <td className="td">{e.event_type}</td>
-                    <td className="td text-gray-500">{e.created_at}</td>
+                    <td className="td text-gray-500">{new Date(e.created_at).toLocaleString()}</td>
                   </tr>
                 ))}
               </tbody>
