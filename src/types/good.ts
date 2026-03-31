@@ -20,7 +20,12 @@ export interface GoodDetail {
   weight?: number
   gtr_id?: number
   gtr_name?: string
-  attributes?: Array<{ attr_id: number; attr_name: string; attr_value: string }>
+  attributes?: Array<{
+    attribute_id: number
+    attribute_type: 'string' | 'boolean' | 'int' | 'float' | 'date' | 'datetime' | 'json'
+    attribute_name: string
+    value: string | number | boolean | null
+  }>
   eans?: string[]
   photos?: Array<{ url: string }>
 }

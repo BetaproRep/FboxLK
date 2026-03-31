@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { outdocsApi } from '@/api/outdocs'
@@ -8,11 +8,49 @@ import DateRangeFilter from '@/components/ui/DateRangeFilter'
 import EmptyState from '@/components/ui/EmptyState'
 import Spinner from '@/components/ui/Spinner'
 
+type SortKey = 'outdoc_id' | 'outdoc_type_descrip' | 'outdoc_date' | 'created_at' | 'outdoc_txt'
+type SortDir = 'asc' | 'desc'
+
+function SortIcon({ active, dir }: { active: boolean; dir: SortDir }) {
+  return (
+    <span className={`ml-1 inline-block text-xs ${active ? 'text-primary-600' : 'text-gray-300'}`}>
+      {active && dir === 'desc' ? '▼' : '▲'}
+    </span>
+  )
+}
+
 function defaultDateFrom() {
   const d = new Date()
   d.setMonth(d.getMonth() - 1)
   return d.toISOString().slice(0, 10)
 }
+
+const OUTDOC_TYPES: [string, string][] = [
+  // Товары
+  ['goods_supply', 'Товары оприходованы'],
+  ['goods_supply_start', 'Начата приемка товаров (опц.)'],
+  ['goods_shipment', 'Товары отгружены'],
+  ['goods_shipment_start', 'Начат подбор товаров (опц.)'],
+  ['goods_shipment_ready', 'Товар подобран для отгрузки (опц.)'],
+  ['goods_correction', 'Инвентаризация-коррекция'],
+  ['goods_to_long_storage', 'Товары перемещены на длительное хранение'],
+  ['goods_from_long_storage', 'Возврат товаров с длительного хранения'],
+  // Заказы
+  ['orders_receiving', 'Получены заказы (опц.)'],
+  ['orders_deficit', 'Заказы не обеспечены товарами (опц.)'],
+  ['orders_production_start', 'Заказы переданы в производство (опц.)'],
+  ['orders_pallet', 'Заказы спаллетированы (опц.)'],
+  ['orders_shipment', 'Заказы отгружены в службу доставки'],
+  ['orders_shipment_refusal', 'Отказ СД в приеме заказов'],
+  ['orders_cancel', 'Заказы аннулированы'],
+  ['orders_full_return', 'Полный возврат заказов'],
+  ['orders_part_return', 'Частичный возврат заказов'],
+  ['orders_client_return', 'Клиентский возврат заказов'],
+  ['orders_payment', 'Оплата заказов'],
+  ['orders_payment_transfer', 'Перечисление наложенного платежа'],
+  // Консолидация
+  ['exorders_supply', 'Приняты отправления для консолидации'],
+]
 
 export default function OutdocsListPage() {
   const navigate = useNavigate()
@@ -20,11 +58,46 @@ export default function OutdocsListPage() {
   const [dateTo, setDateTo] = useState(new Date().toISOString().slice(0, 10))
   const [pageToken, setPageToken] = useState<string | undefined>()
   const [allItems, setAllItems] = useState<OutdocListItem[]>([])
+  const [outdocType, setOutdocType] = useState('')
+  const [search, setSearch] = useState('')
+  const [sortKey, setSortKey] = useState<SortKey>('created_at')
+  const [sortDir, setSortDir] = useState<SortDir>('desc')
+
+  function handleSort(key: SortKey) {
+    if (key === sortKey) {
+      setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'))
+    } else {
+      setSortKey(key)
+      setSortDir('asc')
+    }
+  }
+
+  const sortedItems = useMemo(() => {
+    const q = search.trim().toLowerCase()
+    const filtered = q
+      ? allItems.filter((item) =>
+          [item.outdoc_id, item.outdoc_type_descrip, item.outdoc_date, item.created_at, item.outdoc_txt]
+            .some((v) => v != null && String(v).toLowerCase().includes(q))
+        )
+      : allItems
+    return [...filtered].sort((a, b) => {
+      const av = a[sortKey] ?? ''
+      const bv = b[sortKey] ?? ''
+      const cmp = String(av).localeCompare(String(bv))
+      return sortDir === 'asc' ? cmp : -cmp
+    })
+  }, [allItems, search, sortKey, sortDir])
 
   const { data, isLoading, isFetching } = useQuery({
-    queryKey: ['outdocs', dateFrom, dateTo, pageToken],
+    queryKey: ['outdocs', dateFrom, dateTo, outdocType, pageToken],
     queryFn: () =>
-      outdocsApi.list({ from_date: dateFrom, to_date: dateTo, page_size: 50, page_token: pageToken }),
+      outdocsApi.list({
+        from_date: dateFrom,
+        to_date: dateTo,
+        outdoc_type: outdocType || undefined,
+        page_size: 50,
+        page_token: pageToken,
+      }),
   })
 
   useEffect(() => {
@@ -49,6 +122,22 @@ export default function OutdocsListPage() {
           onDateFromChange={(v) => { setDateFrom(v); handleFilterChange() }}
           onDateToChange={(v) => { setDateTo(v); handleFilterChange() }}
         />
+        <select
+          className="input w-64"
+          value={outdocType}
+          onChange={(e) => { setOutdocType(e.target.value); handleFilterChange() }}
+        >
+          <option value="">Все типы</option>
+          {OUTDOC_TYPES.map(([value, label]) => (
+            <option key={value} value={value}>{label}</option>
+          ))}
+        </select>
+        <input
+          className="input w-56"
+          placeholder="Поиск по списку..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+        />
       </div>
 
       <div className="card overflow-hidden">
@@ -62,16 +151,29 @@ export default function OutdocsListPage() {
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
-                <th className="th">ID</th>
-                <th className="th">Тип</th>
-                <th className="th">Дата</th>
-                <th className="th">Создан</th>
+                {(
+                  [
+                    ['outdoc_id', 'ID'],
+                    ['outdoc_type_descrip', 'Тип'],
+                    ['outdoc_date', 'Дата'],
+                    ['created_at', 'Создан'],
+                    ['outdoc_txt', 'Примечание'],
+                  ] as [SortKey, string][]
+                ).map(([key, label]) => (
+                  <th
+                    key={key}
+                    className="th cursor-pointer select-none hover:bg-gray-100"
+                    onClick={() => handleSort(key)}
+                  >
+                    {label}
+                    <SortIcon active={sortKey === key} dir={sortDir} />
+                  </th>
+                ))}
                 <th className="th">Блокировка</th>
-                <th className="th">Примечание</th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {allItems.map((item) => (
+              {sortedItems.map((item) => (
                 <tr
                   key={item.outdoc_id}
                   className="hover:bg-gray-50 cursor-pointer transition-colors"
@@ -81,13 +183,13 @@ export default function OutdocsListPage() {
                   <td className="td text-gray-500">{item.outdoc_type_descrip}</td>
                   <td className="td text-gray-500">{item.outdoc_date}</td>
                   <td className="td text-gray-500">{item.created_at}</td>
+                  <td className="td text-gray-500 max-w-xs truncate">{item.outdoc_txt ?? '—'}</td>
                   <td className="td">
                     {item.locked
                       ? <span className="badge bg-orange-100 text-orange-700">Заблокирован</span>
                       : <span className="badge bg-gray-100 text-gray-500">Нет</span>
                     }
                   </td>
-                  <td className="td text-gray-500 max-w-xs truncate">{item.outdoc_txt ?? '—'}</td>
                 </tr>
               ))}
             </tbody>

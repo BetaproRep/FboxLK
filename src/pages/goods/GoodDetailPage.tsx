@@ -40,7 +40,7 @@ export default function GoodDetailPage() {
   if (!good) return null
 
   const tabs: { key: Tab; label: string }[] = [
-    { key: 'info', label: 'Информация' },
+    { key: 'info', label: 'Атрибуты' },
     { key: 'movements', label: 'Движение' },
     { key: 'eans', label: 'EAN' },
     { key: 'photos', label: 'Фото' },
@@ -92,21 +92,25 @@ export default function GoodDetailPage() {
         ))}
       </div>
 
-      {tab === 'info' && good.attributes && (
+      {tab === 'info' && (
         <div className="card overflow-hidden">
-          {good.attributes.length > 0 ? (
+          {good.attributes && good.attributes.length > 0 ? (
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
                   <th className="th">Атрибут</th>
+                  <th className="th">Тип</th>
                   <th className="th">Значение</th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
                 {good.attributes.map((a) => (
-                  <tr key={a.attr_id}>
-                    <td className="td text-gray-500">{a.attr_name}</td>
-                    <td className="td">{a.attr_value}</td>
+                  <tr key={a.attribute_id}>
+                    <td className="td text-gray-500">{a.attribute_name}</td>
+                    <td className="td text-xs text-gray-400">{a.attribute_type}</td>
+                    <td className="td font-medium">
+                      {a.value === null ? '—' : String(a.value)}
+                    </td>
                   </tr>
                 ))}
               </tbody>
