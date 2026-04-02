@@ -5,6 +5,7 @@ import type {
   IndocCreateGoodsSupply,
   IndocFile,
   IndocPhoto,
+  IndocJson,
 } from '@/types/indoc'
 
 export const indocsApi = {
@@ -14,7 +15,7 @@ export const indocsApi = {
   },
 
   // Возвращает { success, indoc: {} } — indoc содержит полный json документа
-  getJson: async (indocId: string): Promise<{ success: boolean; indoc: unknown }> => {
+  getJson: async (indocId: string): Promise<{ success: boolean; indoc: IndocJson }> => {
     const { data } = await apiClient.get(`/indocs/${indocId}/json`)
     return data
   },

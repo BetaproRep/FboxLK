@@ -175,7 +175,7 @@ export default function IndocsListPage() {
                 <tr
                   key={item.indoc_id}
                   className="hover:bg-gray-50 cursor-pointer transition-colors"
-                  onClick={() => navigate(`/indocs/${item.indoc_id}`)}
+                  onClick={() => navigate(`/indocs/${item.indoc_id}`, { state: { item } })}
                 >
                   <td className="td font-medium text-primary-600">{item.indoc_id}</td>
                   <td className="td text-gray-500">{item.indoc_type_descrip}</td>
