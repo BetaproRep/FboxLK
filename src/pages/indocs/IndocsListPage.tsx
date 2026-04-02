@@ -9,6 +9,7 @@ import DateRangeFilter from '@/components/ui/DateRangeFilter'
 import EmptyState from '@/components/ui/EmptyState'
 import Spinner from '@/components/ui/Spinner'
 import CreateIndocModal from './CreateIndocModal'
+import { FIELDS } from '@/constants/fields'
 
 type SortKey = 'indoc_id' | 'indoc_type_descrip' | 'created_at' | 'indoc_txt'
 type SortDir = 'asc' | 'desc'
@@ -89,10 +90,10 @@ export default function IndocsListPage() {
 
   function exportToExcel() {
     const rows = sortedItems.map((item) => ({
-      'Номер': item.indoc_id,
-      'Тип': item.indoc_type_descrip,
-      'Дата создания': new Date(item.created_at).toLocaleString(),
-      'Примечание': item.indoc_txt ?? '',
+      [FIELDS.indoc_id.short]: item.indoc_id,
+      [FIELDS.indoc_type_descrip.short]: item.indoc_type_descrip,
+      [FIELDS.created_at.label]: new Date(item.created_at).toLocaleString(),
+      [FIELDS.indoc_txt.label]: item.indoc_txt ?? '',
     }))
     const ws = XLSX.utils.json_to_sheet(rows)
     const wb = XLSX.utils.book_new()
@@ -153,10 +154,10 @@ export default function IndocsListPage() {
               <tr>
                 {(
                   [
-                    ['indoc_id', 'Номер'],
-                    ['indoc_type_descrip', 'Тип'],
-                    ['created_at', 'Дата создания'],
-                    ['indoc_txt', 'Примечание'],
+                    ['indoc_id', FIELDS.indoc_id.short],
+                    ['indoc_type_descrip', FIELDS.indoc_type_descrip.short],
+                    ['created_at', FIELDS.created_at.label],
+                    ['indoc_txt', FIELDS.indoc_txt.label],
                   ] as [SortKey, string][]
                 ).map(([key, label]) => (
                   <th

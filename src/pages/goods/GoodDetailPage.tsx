@@ -6,6 +6,7 @@ import type { GoodDetail } from '@/types/good'
 import PageHeader from '@/components/ui/PageHeader'
 import EmptyState from '@/components/ui/EmptyState'
 import Spinner from '@/components/ui/Spinner'
+import { FIELDS } from '@/constants/fields'
 
 type Tab = 'info' | 'movements' | 'eans' | 'photos' | 'sn'
 
@@ -62,11 +63,11 @@ export default function GoodDetailPage() {
       <div className="card p-6 mb-6">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-x-6 gap-y-4">
           {([
-            ['Группа', good.gtr_name],
-            ['Вес (г)', good.weight],
-            ['Длина (мм)', good.length],
-            ['Ширина (мм)', good.width],
-            ['Высота (мм)', good.height],
+            [FIELDS.gtr_name.label, good.gtr_name],
+            [FIELDS.weight.label, good.weight],
+            [FIELDS.length.label, good.length],
+            [FIELDS.width.label, good.width],
+            [FIELDS.height.label, good.height],
           ] as [string, unknown][]).map(([label, value]) => (
             <div key={label}>
               <p className="text-xs text-gray-500 uppercase tracking-wide">{label}</p>
@@ -98,9 +99,9 @@ export default function GoodDetailPage() {
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
-                  <th className="th">Атрибут</th>
-                  <th className="th">Тип</th>
-                  <th className="th">Значение</th>
+                  <th className="th">{FIELDS.attribute_name.label}</th>
+                  <th className="th">{FIELDS.attribute_type.short}</th>
+                  <th className="th">{FIELDS.value.label}</th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
@@ -127,11 +128,11 @@ export default function GoodDetailPage() {
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
-                  <th className="th">Дата</th>
-                  <th className="th">Создан</th>
-                  <th className="th">Тип документа</th>
-                  <th className="th">Тип качества</th>
-                  <th className="th text-right">Кол-во</th>
+                  <th className="th">{FIELDS.outdoc_date.short}</th>
+                  <th className="th">{FIELDS.created_at.short}</th>
+                  <th className="th">{FIELDS.outdoc_type_descrip.label}</th>
+                  <th className="th">{FIELDS.qual_type.label}</th>
+                  <th className="th text-right">{FIELDS.qnt.short}</th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">

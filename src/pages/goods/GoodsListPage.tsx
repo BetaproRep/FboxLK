@@ -6,6 +6,7 @@ import type { GoodListItem } from '@/types/good'
 import PageHeader from '@/components/ui/PageHeader'
 import EmptyState from '@/components/ui/EmptyState'
 import Spinner from '@/components/ui/Spinner'
+import { FIELDS } from '@/constants/fields'
 
 export default function GoodsListPage() {
   const navigate = useNavigate()
@@ -38,11 +39,11 @@ export default function GoodsListPage() {
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
-                <th className="th">ID товара</th>
-                <th className="th">Наименование</th>
-                <th className="th">Тип</th>
-                <th className="th">Группа</th>
-                <th className="th">Вес, г</th>
+                <th className="th">{FIELDS.good_id.label}</th>
+                <th className="th">{FIELDS.good_name.label}</th>
+                <th className="th">{FIELDS.good_type.short}</th>
+                <th className="th">{FIELDS.gtr_name.short}</th>
+                <th className="th">{FIELDS.weight.label}</th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">

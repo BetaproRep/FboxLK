@@ -5,6 +5,7 @@ import type { GoodStock } from '@/types/good'
 import PageHeader from '@/components/ui/PageHeader'
 import EmptyState from '@/components/ui/EmptyState'
 import Spinner from '@/components/ui/Spinner'
+import { FIELDS } from '@/constants/fields'
 
 type Mode = 'current' | 'date' | 'expiry'
 
@@ -78,13 +79,13 @@ export default function GoodsStockPage() {
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
-                <th className="th">ID товара</th>
-                <th className="th">Тип качества</th>
-                <th className="th text-right">Остаток</th>
-                <th className="th text-right">Карантин</th>
-                <th className="th text-right">Долгое хранение</th>
-                <th className="th text-right">Заказы (в работе)</th>
-                <th className="th text-right">Заказы (ожидание)</th>
+                <th className="th">{FIELDS.good_id.label}</th>
+                <th className="th">{FIELDS.qual_type.label}</th>
+                <th className="th text-right">{FIELDS.stock.label}</th>
+                <th className="th text-right">{FIELDS.quarantine.label}</th>
+                <th className="th text-right">{FIELDS.long_storage.label}</th>
+                <th className="th text-right">{FIELDS.orders_inwork.label}</th>
+                <th className="th text-right">{FIELDS.orders_wait.label}</th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">

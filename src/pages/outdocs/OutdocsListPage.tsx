@@ -7,6 +7,7 @@ import PageHeader from '@/components/ui/PageHeader'
 import DateRangeFilter from '@/components/ui/DateRangeFilter'
 import EmptyState from '@/components/ui/EmptyState'
 import Spinner from '@/components/ui/Spinner'
+import { FIELDS } from '@/constants/fields'
 
 type SortKey = 'outdoc_id' | 'outdoc_type_descrip' | 'outdoc_date' | 'created_at' | 'outdoc_txt'
 type SortDir = 'asc' | 'desc'
@@ -153,11 +154,11 @@ export default function OutdocsListPage() {
               <tr>
                 {(
                   [
-                    ['outdoc_id', 'ID'],
-                    ['outdoc_type_descrip', 'Тип'],
-                    ['outdoc_date', 'Дата'],
-                    ['created_at', 'Создан'],
-                    ['outdoc_txt', 'Примечание'],
+                    ['outdoc_id', FIELDS.outdoc_id.short],
+                    ['outdoc_type_descrip', FIELDS.outdoc_type_descrip.short],
+                    ['outdoc_date', FIELDS.outdoc_date.short],
+                    ['created_at', FIELDS.created_at.short],
+                    ['outdoc_txt', FIELDS.outdoc_txt.label],
                   ] as [SortKey, string][]
                 ).map(([key, label]) => (
                   <th
@@ -169,7 +170,7 @@ export default function OutdocsListPage() {
                     <SortIcon active={sortKey === key} dir={sortDir} />
                   </th>
                 ))}
-                <th className="th">Блокировка</th>
+                <th className="th">{FIELDS.locked.label}</th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">

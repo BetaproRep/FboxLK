@@ -5,6 +5,7 @@ import toast from 'react-hot-toast'
 import { outdocsApi } from '@/api/outdocs'
 import PageHeader from '@/components/ui/PageHeader'
 import EmptyState from '@/components/ui/EmptyState'
+import { FIELDS } from '@/constants/fields'
 
 type Tab = 'goods' | 'sn' | 'files' | 'photos'
 
@@ -88,10 +89,10 @@ export default function OutdocDetailPage() {
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
-                  <th className="th">ID товара</th>
+                  <th className="th">{FIELDS.good_id.label}</th>
                   <th className="th">Состояние</th>
-                  <th className="th">Тип качества</th>
-                  <th className="th text-right">Кол-во</th>
+                  <th className="th">{FIELDS.qual_type.label}</th>
+                  <th className="th text-right">{FIELDS.qnt.short}</th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
@@ -117,11 +118,11 @@ export default function OutdocDetailPage() {
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
-                  <th className="th">Серийный номер</th>
-                  <th className="th">ID товара</th>
-                  <th className="th">Тип качества</th>
-                  <th className="th">Направление</th>
-                  <th className="th">Заказ</th>
+                  <th className="th">{FIELDS.good_sn.label}</th>
+                  <th className="th">{FIELDS.good_id.label}</th>
+                  <th className="th">{FIELDS.qual_type.label}</th>
+                  <th className="th">{FIELDS.inout.label}</th>
+                  <th className="th">{FIELDS.order_id.short}</th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">

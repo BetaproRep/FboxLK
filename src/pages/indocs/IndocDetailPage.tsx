@@ -9,6 +9,7 @@ import Spinner from '@/components/ui/Spinner'
 import EmptyState from '@/components/ui/EmptyState'
 import JsonViewer from '@/components/ui/JsonViewer'
 import type { IndocListItem, IndocJson } from '@/types/indoc'
+import { FIELDS } from '@/constants/fields'
 
 // ─── Вкладки ────────────────────────────────────────────────────────────────
 
@@ -56,14 +57,14 @@ function GoodsTab({ indoc }: { indoc: IndocJson }) {
       <table className="min-w-full divide-y divide-gray-200 text-sm">
         <thead className="bg-gray-50">
           <tr>
-            <th className="th">Код товара</th>
-            <th className="th">Название</th>
-            <th className="th text-right">Кол-во</th>
+            <th className="th">{FIELDS.good_id.label}</th>
+            <th className="th">{FIELDS.good_name.short}</th>
+            <th className="th text-right">{FIELDS.plan_qnt.short}</th>
             {indoc.indoc_type === 'goods_shipment_task' && (
-              <th className="th text-right">Цена</th>
+              <th className="th text-right">{FIELDS.price.label}</th>
             )}
             {indoc.indoc_type === 'goods_supply_task' && (
-              <th className="th">Серийный №</th>
+              <th className="th">{FIELDS.sn_mandant.short}</th>
             )}
           </tr>
         </thead>
@@ -106,11 +107,11 @@ function OrdersTab({ indoc }: { indoc: IndocJson }) {
       <table className="min-w-full divide-y divide-gray-200 text-sm">
         <thead className="bg-gray-50">
           <tr>
-            <th className="th">Номер заказа</th>
-            <th className="th">Источник</th>
+            <th className="th">{FIELDS.order_id.label}</th>
+            <th className="th">{FIELDS.origin.label}</th>
             <th className="th">Получатель</th>
             <th className="th">Адрес</th>
-            <th className="th text-right">Товаров</th>
+            <th className="th text-right">{FIELDS.good_name.short}</th>
           </tr>
         </thead>
         <tbody className="bg-white divide-y divide-gray-100">
