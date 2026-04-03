@@ -48,7 +48,7 @@ export default function OrderDetailPage() {
     <>
       <PageHeader
         title={`Заказ ${order.order_id ?? orderId}`}
-        subtitle={new Date(order.created_at).toLocaleString()}
+        subtitle={order.created_at ? new Date(order.created_at).toLocaleString() : ''}
         actions={
           <div className="flex gap-2">
             <button className="btn-secondary" onClick={() => navigate('/orders')}>
