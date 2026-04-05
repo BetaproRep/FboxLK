@@ -2,7 +2,7 @@ import { apiClient } from './client'
 import type {
   IndocListRequest,
   IndocListResponse,
-  IndocCreateGoodsSupply,
+  IndocCreate,
   IndocFile,
   IndocPhoto,
   IndocJson,
@@ -20,7 +20,7 @@ export const indocsApi = {
     return data
   },
 
-  create: async (body: IndocCreateGoodsSupply) => {
+  create: async (body: IndocCreate) => {
     const { data } = await apiClient.post('/indocs', body)
     return data
   },

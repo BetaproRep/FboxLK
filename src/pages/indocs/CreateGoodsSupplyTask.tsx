@@ -1,11 +1,12 @@
 import { useState, useEffect, useRef, FormEvent } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import toast from 'react-hot-toast'
+import toast from 'react-hot-toast' // используется для финального "Документ создан" после закрытия модала
 import * as XLSX from 'xlsx'
 import { indocsApi } from '@/api/indocs'
 import { goodsApi } from '@/api/goods'
 import type { GoodDetail } from '@/types/good'
 import Modal from '@/components/ui/Modal'
+import FormAlert from '@/components/ui/FormAlert'
 import Spinner from '@/components/ui/Spinner'
 import { FIELDS } from '@/constants/fields'
 
@@ -79,12 +80,18 @@ interface ItemRow {
 const emptyItem = (): ItemRow => ({ good_id: '', qnt: '1' })
 
 // Создаём поставку (goods_supply_task) с одним или более товарами
-export default function CreateIndocModal({ isOpen, onClose }: Props) {
+interface Alert {
+  type: 'error' | 'success' | 'warning'
+  message: string
+}
+
+export default function CreateGoodsSupplyTask({ isOpen, onClose }: Props) {
   const qc = useQueryClient()
   const [indocId, setIndocId] = useState('')
   const [indocTxt, setIndocTxt] = useState('')
   const [items, setItems] = useState<ItemRow[]>([emptyItem()])
   const [showErrors, setShowErrors] = useState(false)
+  const [alert, setAlert] = useState<Alert | null>(null)
 
   function updateItem(index: number, field: keyof ItemRow, value: string) {
     setItems((prev) =>
@@ -110,7 +117,7 @@ export default function CreateIndocModal({ isOpen, onClose }: Props) {
     try {
       text = await navigator.clipboard.readText()
     } catch {
-      toast.error('Нет доступа к буферу обмена')
+      setAlert({ type: 'error', message: 'Нет доступа к буферу обмена' })
       return
     }
 
@@ -120,7 +127,7 @@ export default function CreateIndocModal({ isOpen, onClose }: Props) {
       .map((line) => line.split('\t'))
 
     if (rows.length < 2) {
-      toast.error('Буфер пуст или содержит только заголовок')
+      setAlert({ type: 'error', message: 'Буфер пуст или содержит только заголовок' })
       return
     }
 
@@ -132,7 +139,7 @@ export default function CreateIndocModal({ isOpen, onClose }: Props) {
     }
 
     if (colIndex.good_id === undefined || colIndex.qnt === undefined) {
-      toast.error(`Не найдены колонки «${FIELDS.good_id.short}» и «${FIELDS.qnt.short}»`)
+      setAlert({ type: 'error', message: `Не найдены колонки «${FIELDS.good_id.short}» и «${FIELDS.qnt.short}»` })
       return
     }
 
@@ -145,7 +152,7 @@ export default function CreateIndocModal({ isOpen, onClose }: Props) {
       .filter((r) => r.good_id)
 
     if (parsed.length === 0) {
-      toast.error('Не найдено ни одной строки с данными')
+      setAlert({ type: 'error', message: 'Не найдено ни одной строки с данными' })
       return
     }
 
@@ -171,7 +178,7 @@ export default function CreateIndocModal({ isOpen, onClose }: Props) {
       setItems(parsed)
     }
 
-    toast.success(`Загружено ${parsed.length} позиций`)
+    setAlert({ type: 'success', message: `Загружено ${parsed.length} позиций` })
   }
 
   const mutation = useMutation({
@@ -190,6 +197,10 @@ export default function CreateIndocModal({ isOpen, onClose }: Props) {
       setIndocTxt('')
       setItems([emptyItem()])
       setShowErrors(false)
+      setAlert(null)
+    },
+    onError: (err: Error) => {
+      setAlert({ type: 'error', message: err.message })
     },
   })
 
@@ -198,14 +209,14 @@ export default function CreateIndocModal({ isOpen, onClose }: Props) {
 
     const filledItems = items.filter((r) => r.good_id.trim())
     if (filledItems.length === 0) {
-      toast.error('Добавьте хотя бы один товар')
+      setAlert({ type: 'error', message: 'Добавьте хотя бы один товар' })
       return
     }
     const hasInvalidId = filledItems.some((r) => r.good_name === '')
     const hasInvalidQnt = filledItems.some((r) => Number(r.qnt) <= 0)
     if (hasInvalidId || hasInvalidQnt) {
       setShowErrors(true)
-      toast.error('Исправьте ошибки в таблице')
+      setAlert({ type: 'error', message: 'Исправьте ошибки в таблице' })
       return
     }
 
@@ -213,8 +224,28 @@ export default function CreateIndocModal({ isOpen, onClose }: Props) {
   }
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Создать входящий документ (поставка)" size="xl">
-      <form onSubmit={handleSubmit} className="flex flex-col flex-1 overflow-hidden">
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      title="Создать входящий документ (поставка)"
+      size="xl"
+      headerActions={
+        <>
+          <button type="button" className="btn-secondary" onClick={onClose}>Отмена</button>
+          <button type="submit" form="create-goods-supply-form" className="btn-primary" disabled={mutation.isPending}>
+            {mutation.isPending && <Spinner className="w-4 h-4 text-white" />}
+            Создать
+          </button>
+        </>
+      }
+    >
+      <form id="create-goods-supply-form" onSubmit={handleSubmit} className="flex flex-col flex-1 overflow-hidden">
+        {alert && (
+          <div className="mb-4 shrink-0">
+            <FormAlert type={alert.type} message={alert.message} onClose={() => setAlert(null)} />
+          </div>
+        )}
+
         <div className="space-y-4 shrink-0">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -311,15 +342,6 @@ export default function CreateIndocModal({ isOpen, onClose }: Props) {
           </div>
         </div>
 
-        <div className="flex justify-end gap-3 pt-4 mt-2 border-t shrink-0">
-          <button type="button" className="btn-secondary" onClick={onClose}>
-            Отмена
-          </button>
-          <button type="submit" className="btn-primary" disabled={mutation.isPending}>
-            {mutation.isPending && <Spinner className="w-4 h-4 text-white" />}
-            Создать
-          </button>
-        </div>
       </form>
     </Modal>
   )

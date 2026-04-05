@@ -8,7 +8,8 @@ import PageHeader from '@/components/ui/PageHeader'
 import DateRangeFilter from '@/components/ui/DateRangeFilter'
 import EmptyState from '@/components/ui/EmptyState'
 import Spinner from '@/components/ui/Spinner'
-import CreateIndocModal from './CreateIndocModal'
+import CreateGoodsSupplyTask from './CreateGoodsSupplyTask'
+import CreateOrdersShipmentTask from './CreateOrdersShipmentTask'
 import { FIELDS } from '@/constants/fields'
 
 type SortKey = 'indoc_id' | 'indoc_type_descrip' | 'created_at' | 'indoc_txt'
@@ -34,7 +35,8 @@ export default function IndocsListPage() {
   const [dateTo, setDateTo] = useState(new Date().toISOString().slice(0, 10))
   const [pageToken, setPageToken] = useState<string | undefined>()
   const [allItems, setAllItems] = useState<IndocListItem[]>([])
-  const [showCreate, setShowCreate] = useState(false)
+  const [showCreateSupply, setShowCreateSupply] = useState(false)
+  const [showCreateOrdersShipment, setShowCreateOrdersShipment] = useState(false)
   const [indocType, setIndocType] = useState('')
   const [search, setSearch] = useState('')
   const [sortKey, setSortKey] = useState<SortKey>('created_at')
@@ -106,9 +108,14 @@ export default function IndocsListPage() {
       <PageHeader
         title="Входящие документы"
         actions={
-          <button className="btn-primary" onClick={() => setShowCreate(true)}>
-            + Создать документ
-          </button>
+          <div className="flex gap-2">
+            <button className="btn-primary" onClick={() => setShowCreateSupply(true)}>
+              + Поставка
+            </button>
+            <button className="btn-primary" onClick={() => setShowCreateOrdersShipment(true)}>
+              + Отгрузка заказов
+            </button>
+          </div>
         }
       />
 
@@ -201,7 +208,8 @@ export default function IndocsListPage() {
         )}
       </div>
 
-      <CreateIndocModal isOpen={showCreate} onClose={() => setShowCreate(false)} />
+      <CreateGoodsSupplyTask isOpen={showCreateSupply} onClose={() => setShowCreateSupply(false)} />
+      <CreateOrdersShipmentTask isOpen={showCreateOrdersShipment} onClose={() => setShowCreateOrdersShipment(false)} />
     </>
   )
 }

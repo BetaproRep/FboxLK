@@ -32,10 +32,14 @@ export interface ColumnSchema {
 // ── Результат парсинга ────────────────────────────────────────────────────────
 
 export interface ParseError {
+  /** Индекс заказа в результирующем массиве orders */
+  orderIdx: number
   /** Номер строки в файле (0-based) */
   row: number
   /** DSL-имя поля */
   field: string
+  /** Название колонки из строки 0 шаблона (для показа пользователю) */
+  label: string
   message: string
 }
 
@@ -57,11 +61,7 @@ export function parseColumnSchema(dsl: string): ColumnSchema | null {
   const path = s.slice(0, colonIdx)
   let typeSpec = s.slice(colonIdx + 1)
 
-  // required
-  const required = typeSpec.endsWith('*')
-  if (required) typeSpec = typeSpec.slice(0, -1)
-
-  // default value
+  // default value (извлекаем первым, чтобы * мог стоять до или после =)
   let defaultValue: unknown
   const eqIdx = typeSpec.indexOf('=')
   if (eqIdx !== -1) {
@@ -69,6 +69,10 @@ export function parseColumnSchema(dsl: string): ColumnSchema | null {
     typeSpec = typeSpec.slice(0, eqIdx)
     defaultValue = rawDefault
   }
+
+  // required (* может стоять в любом месте typeSpec, например "num*")
+  const required = typeSpec.includes('*')
+  typeSpec = typeSpec.replace('*', '')
 
   const type = typeSpec as ColumnSchema['type']
 
@@ -156,6 +160,9 @@ function coerce(
       errors.push({ message: `ожидается булево значение, получено "${str}"` })
       return null
     }
+
+    default:
+      return null
   }
 }
 
@@ -171,6 +178,9 @@ function coerce(
  */
 export function parseOrderTemplate(rows: unknown[][]): ParseResult {
   if (rows.length < 3) return { orders: [], errors: [] }
+
+  // Заголовки из строки 0 (для сообщений об ошибках пользователю)
+  const labels: string[] = (rows[0] as unknown[]).map(cell => String(cell ?? ''))
 
   // Парсим схему из строки 1
   const schemas: Array<ColumnSchema | null> = (rows[1] as unknown[]).map(cell =>
@@ -207,7 +217,8 @@ export function parseOrderTemplate(rows: unknown[][]): ParseResult {
   }
 
   // Обрабатываем каждую группу
-  for (const group of orderGroups) {
+  for (let orderIdx = 0; orderIdx < orderGroups.length; orderIdx++) {
+    const group = orderGroups[orderIdx]
     const orderErrors: ParseError[] = []
     const order: Record<string, unknown> = {}
     const firstRow = group.rows[0]
@@ -226,15 +237,15 @@ export function parseOrderTemplate(rows: unknown[][]): ParseResult {
 
       if (rawValue === '' || rawValue === undefined || rawValue === null) {
         if (schema.required) {
-          orderErrors.push({ row: group.fileRowStart, field: schema.path, message: 'обязательное поле не заполнено' })
+          orderErrors.push({ row: group.fileRowStart, field: schema.path, label: labels[colIdx] ?? schema.path, message: 'обязательное поле не заполнено' })
         }
         continue
       }
 
       const localErrors: Array<{ message: string }> = []
       const result = coerce(rawValue, schema.type, localErrors)
-      localErrors.forEach(e => orderErrors.push({ row: group.fileRowStart, field: schema.path, message: e.message }))
-      if (result !== null) setDeep(order, schema.pathParts, result.value)
+      localErrors.forEach(e => orderErrors.push({ row: group.fileRowStart, field: schema.path, label: labels[colIdx] ?? schema.path, message: e.message }))
+      if (result != null) setDeep(order, schema.pathParts, result.value)
     }
 
     // ── Массивы: собираем построчно ──
@@ -256,20 +267,22 @@ export function parseOrderTemplate(rows: unknown[][]): ParseResult {
       for (let rowOffset = 0; rowOffset < group.rows.length; rowOffset++) {
         const row = group.rows[rowOffset]
         const element: Record<string, unknown> = {}
-        let hasAnyValue = false
+        // hasRealValue — есть хотя бы одно значение из ячейки (не из default)
+        // hasDefaultValue — собраны поля из default, применяем только если hasRealValue
+        let hasRealValue = false
+        const pendingDefaults: Array<{ key: string; value: unknown }> = []
 
         for (const schema of colSchemas) {
-          // Находим индекс колонки по dsl
           const colIdx = schemas.indexOf(schema)
-          let rawValue = row[colIdx]
+          const rawValue = row[colIdx]
+          const isEmpty = rawValue === '' || rawValue === undefined || rawValue === null
 
-          if ((rawValue === '' || rawValue === undefined || rawValue === null) && schema.default !== undefined) {
-            rawValue = schema.default
-          }
-
-          if (rawValue === '' || rawValue === undefined || rawValue === null) {
-            if (schema.required && rowOffset === 0) {
-              // required-поле массива пустое в первой строке = массив не передаётся
+          if (isEmpty) {
+            if (schema.default !== undefined) {
+              // Откладываем default — применим только если строка не пустая
+              const localErrors: Array<{ message: string }> = []
+              const result = coerce(schema.default, schema.type, localErrors)
+              if (result != null) pendingDefaults.push({ key: schema.localKey, value: result.value })
             }
             continue
           }
@@ -277,20 +290,26 @@ export function parseOrderTemplate(rows: unknown[][]): ParseResult {
           const localErrors: Array<{ message: string }> = []
           const result = coerce(rawValue, schema.type, localErrors)
           const fileRow = group.fileRowStart + rowOffset
-          localErrors.forEach(e => orderErrors.push({ row: fileRow, field: schema.path, message: e.message }))
-          if (result !== null) {
+          localErrors.forEach(e => orderErrors.push({ row: fileRow, field: schema.path, label: `${labels[colIdx] ?? schema.path} строка ${rowOffset + 1}`, message: e.message }))
+          if (result != null) {
             element[schema.localKey] = result.value
-            hasAnyValue = true
+            hasRealValue = true
           }
         }
 
-        if (hasAnyValue) arr.push(element)
+        if (hasRealValue) {
+          // Применяем отложенные defaults к элементу
+          for (const { key, value } of pendingDefaults) {
+            if (!(key in element)) element[key] = value
+          }
+          arr.push(element)
+        }
       }
 
       if (arr.length > 0) parentObj[rep.arrayName] = arr
     }
 
-    errors.push(...orderErrors)
+    errors.push(...orderErrors.map(e => ({ ...e, orderIdx })))
     orders.push(order as unknown as OrderCreateItem)
   }
 

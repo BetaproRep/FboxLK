@@ -168,7 +168,7 @@ describe('parseOrderTemplate', () => {
     expect(orders[0].dev101?.mailtype).toBe(1)
   })
 
-  it('ошибка при неверном типе числа', () => {
+  it('ошибка при неверном типе числа содержит label из строки 0', () => {
     const rows = [
       HEADER_ROW,
       DSL_ROW,
@@ -177,6 +177,7 @@ describe('parseOrderTemplate', () => {
     const { errors } = parseOrderTemplate(rows)
     expect(errors.length).toBeGreaterThan(0)
     expect(errors[0].field).toBe('delivery_id')
+    expect(errors[0].label).toBe('Служба доставки')  // строка 0, колонка 1
   })
 
   it('bool: принимает "да", "YES", 1', () => {
@@ -197,5 +198,41 @@ describe('parseOrderTemplate', () => {
     const { errors } = parseOrderTemplate(rows)
     expect(errors.length).toBeGreaterThan(0)
     expect(errors[0].field).toBe('delivery.part_deliv')
+  })
+
+  describe('default в полях массива (goods[].field:num=0)', () => {
+    // DSL: good_id обязательный без дефолта, cod — с дефолтом 0
+    const dsl = [
+      'order_id:str*', 'delivery_id:int*',
+      'goods[].good_id:str*', 'goods[].declared_value:num*', 'goods[].cod:num=0',
+    ]
+    const H = ['h1','h2','h3','h4','h5']
+
+    it('default применяется если ячейка пуста, но другие поля строки заполнены', () => {
+      // cod не заполнен → должен стать 0
+      const rows = [H, dsl, ['ORD-1', 101, 'AR-1', 150, '']]
+      const { orders, errors } = parseOrderTemplate(rows)
+      expect(errors).toHaveLength(0)
+      expect(orders[0].goods![0].cod).toBe(0)
+    })
+
+    it('default НЕ создаёт элемент массива если вся строка пуста', () => {
+      // Заказ из 2 строк, но вторая строка goods полностью пуста (только cod имеет default)
+      // Ожидаем: goods содержит 1 элемент, не 2
+      const rows = [H, dsl,
+        ['ORD-1', 101, 'AR-1', 150, ''],  // первый элемент goods
+        ['',      '',  '',     '',  ''],   // пустая строка — элемента быть не должно
+      ]
+      const { orders } = parseOrderTemplate(rows)
+      expect(orders[0].goods).toHaveLength(1)
+    })
+
+    it('parseColumnSchema корректно парсит num*=0', () => {
+      const s = parseColumnSchema('goods[].cod:num*=0')!
+      expect(s.required).toBe(true)
+      expect(s.type).toBe('num')
+      expect(s.default).toBe(0)
+      expect(s.isArray).toBe(true)
+    })
   })
 })

@@ -34,7 +34,7 @@ const common: FieldMap = {
   order_id:           { label: 'Номер заказа',       short: 'Номер'      },
   state:              { label: 'Статус',             short: 'Статус'     },
   origin:             { label: 'Маркетплейс',        short: 'Маркетпл.'  },
-  delivery_id:        { label: 'ID доставки',        short: 'Доставка'   },
+  delivery_id:        { label: 'Код службы доставки',        short: 'Код СД'   },
   delivery_name:      { label: 'Служба доставки',    short: 'Доставка'   },
   canceled:           { label: 'Отменён',            short: 'Отменён'    },
   plan_qnt:           { label: 'Плановое количество',short: 'План'       },

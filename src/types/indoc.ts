@@ -1,3 +1,5 @@
+import type { OrderCreateItem } from './order'
+
 export interface IndocListItem {
   indoc_id: string
   indoc_type: 'goods_supply_task' | 'goods_shipment_task' | 'orders_shipment_task' | 'goods_from_long_storage_task'
@@ -112,3 +114,13 @@ export interface IndocCreateGoodsSupply {
     qnt: number
   }>
 }
+
+// POST /indocs — создание задания на отгрузку заказов
+export interface IndocCreateOrdersShipment {
+  indoc_type: 'orders_shipment_task'
+  indoc_id: string
+  indoc_txt?: string
+  orders: OrderCreateItem[]
+}
+
+export type IndocCreate = IndocCreateGoodsSupply | IndocCreateOrdersShipment
