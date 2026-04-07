@@ -1,7 +1,7 @@
 import { useState, FormEvent } from 'react'
+import DownloadFilesModal from '@/components/ui/DownloadFilesModal'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import toast from 'react-hot-toast'
-import * as XLSX from 'xlsx'
 import { indocsApi } from '@/api/indocs'
 import type { OrderCreateItem } from '@/types/order'
 import type { ParseError } from '@/utils/orderTemplateParser'
@@ -11,16 +11,6 @@ import Spinner from '@/components/ui/Spinner'
 import { FIELDS } from '@/constants/fields'
 import { parseOrderTemplate } from '@/utils/orderTemplateParser'
 
-// Минимальный шаблон: строка 0 — заголовки, строка 1 — DSL-схема
-function downloadTemplate() {
-  const ws = XLSX.utils.aoa_to_sheet([
-    ['Номер заказа',  'ID доставки',  'Имя клиента'],
-    ['order_id:str*', 'delivery_id:int*', 'client.name:str'],
-  ])
-  const wb = XLSX.utils.book_new()
-  XLSX.utils.book_append_sheet(wb, ws, 'Заказы')
-  XLSX.writeFile(wb, 'шаблон_отгрузка_заказов.xlsx')
-}
 
 interface OrderEntry {
   order: OrderCreateItem
@@ -44,6 +34,7 @@ export default function CreateOrdersShipmentTask({ isOpen, onClose }: Props) {
   const [entries, setEntries] = useState<OrderEntry[]>([])
   const [jsonViewIdx, setJsonViewIdx] = useState<number | null>(null)
   const [alert, setAlert] = useState<Alert | null>(null)
+  const [downloadOpen, setDownloadOpen] = useState(false)
 
   async function pasteFromClipboard() {
     let text: string
@@ -145,14 +136,13 @@ export default function CreateOrdersShipmentTask({ isOpen, onClose }: Props) {
       <Modal
         isOpen={isOpen}
         onClose={handleClose}
-        title="Создать входящий документ (отгрузка заказов)"
+        title="Задание на отгрузку заказов"
         size="xl"
         headerActions={
           <>
-            <button type="button" className="btn-secondary" onClick={handleClose}>Отмена</button>
             <button type="submit" form="create-orders-shipment-form" className="btn-primary" disabled={mutation.isPending}>
               {mutation.isPending && <Spinner className="w-4 h-4 text-white" />}
-              Создать
+              Создать документ
             </button>
           </>
         }
@@ -198,7 +188,7 @@ export default function CreateOrdersShipmentTask({ isOpen, onClose }: Props) {
                 <button
                   type="button"
                   className="text-sm text-gray-500 hover:text-gray-700"
-                  onClick={downloadTemplate}
+                  onClick={() => setDownloadOpen(true)}
                 >
                   ↓ Шаблон
                 </button>
@@ -279,6 +269,8 @@ export default function CreateOrdersShipmentTask({ isOpen, onClose }: Props) {
 
         </form>
       </Modal>
+
+      <DownloadFilesModal isOpen={downloadOpen} onClose={() => setDownloadOpen(false)} fileType={1} />
 
       {currentOrder && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center">
