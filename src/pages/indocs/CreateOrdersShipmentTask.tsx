@@ -51,7 +51,15 @@ export default function CreateOrdersShipmentTask({ isOpen, onClose }: Props) {
       return
     }
 
-    const { orders: parsed, errors } = parseOrderTemplate(rows)
+    const { orders: parsed, errors, schemaErrors } = parseOrderTemplate(rows)
+
+    if (schemaErrors.length > 0) {
+      const lines = schemaErrors.map(e =>
+        e.col >= 0 ? `Колонка ${e.col + 1}: ${e.message}` : e.message
+      )
+      setAlert({ type: 'error', message: 'Ошибки в DSL-схеме:\n' + lines.map(l => `• ${l}`).join('\n') })
+      return
+    }
 
     if (parsed.length === 0) {
       setAlert({ type: 'error', message: 'Не удалось разобрать ни одного заказа' })
@@ -61,9 +69,9 @@ export default function CreateOrdersShipmentTask({ isOpen, onClose }: Props) {
     // Группируем ошибки по индексу заказа
     const errorsByIdx = new Map<number, ParseError[]>()
     for (const err of errors) {
-      const list = errorsByIdx.get(err.orderIdx) ?? []
+      const list = errorsByIdx.get(err.itemIdx) ?? []
       list.push(err)
-      errorsByIdx.set(err.orderIdx, list)
+      errorsByIdx.set(err.itemIdx, list)
     }
 
     const newEntries: OrderEntry[] = parsed.map((order, i) => ({
@@ -233,7 +241,7 @@ export default function CreateOrdersShipmentTask({ isOpen, onClose }: Props) {
                       <div className="grid grid-cols-[2fr_1fr_2fr_auto_auto] gap-x-2 items-center px-2 py-1.5">
                         <span className="text-sm font-medium text-primary-700 truncate">{order.order_id}</span>
                         <span className="text-sm text-gray-500">{order.delivery_id}</span>
-                        <span className="text-sm text-gray-500 truncate">{order.client?.name ?? '—'}</span>
+                        <span className="text-sm text-gray-500 truncate">{(order as Record<string, any>).client?.name ?? '—'}</span>
                         <button
                           type="button"
                           className="text-xs font-mono text-gray-400 hover:text-gray-700 px-1"
