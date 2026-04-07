@@ -57,11 +57,11 @@ function GoodsTab({ indoc }: { indoc: IndocJson }) {
       <table className="min-w-full divide-y divide-gray-200 text-sm">
         <thead className="bg-gray-50">
           <tr>
-            <th className="th">{FIELDS.good_id.label}</th>
+            <th className="th">{FIELDS.good_id.short}</th>
             <th className="th">{FIELDS.good_name.short}</th>
             <th className="th text-right">{FIELDS.plan_qnt.short}</th>
             {indoc.indoc_type === 'goods_shipment_task' && (
-              <th className="th text-right">{FIELDS.price.label}</th>
+              <th className="th text-right">{FIELDS.price.short}</th>
             )}
             {indoc.indoc_type === 'goods_supply_task' && (
               <th className="th">{FIELDS.sn_mandant.short}</th>
@@ -107,8 +107,8 @@ function OrdersTab({ indoc }: { indoc: IndocJson }) {
       <table className="min-w-full divide-y divide-gray-200 text-sm">
         <thead className="bg-gray-50">
           <tr>
-            <th className="th">{FIELDS.order_id.label}</th>
-            <th className="th">{FIELDS.origin.label}</th>
+            <th className="th">{FIELDS.order_id.short}</th>
+            <th className="th">{FIELDS.origin.short}</th>
             <th className="th">Получатель</th>
             <th className="th">Адрес</th>
             <th className="th text-right">{FIELDS.good_name.short}</th>

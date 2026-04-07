@@ -3,6 +3,7 @@ interface Props {
   dateTo: string
   onDateFromChange: (v: string) => void
   onDateToChange: (v: string) => void
+  disabled?: boolean
 }
 
 export default function DateRangeFilter({
@@ -10,6 +11,7 @@ export default function DateRangeFilter({
   dateTo,
   onDateFromChange,
   onDateToChange,
+  disabled,
 }: Props) {
   return (
     <div className="flex items-center gap-2">
@@ -18,6 +20,7 @@ export default function DateRangeFilter({
         value={dateFrom}
         onChange={(e) => onDateFromChange(e.target.value)}
         className="input w-40"
+        disabled={disabled}
       />
       <span className="text-gray-400 text-sm">—</span>
       <input
@@ -25,6 +28,7 @@ export default function DateRangeFilter({
         value={dateTo}
         onChange={(e) => onDateToChange(e.target.value)}
         className="input w-40"
+        disabled={disabled}
       />
     </div>
   )

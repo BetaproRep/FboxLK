@@ -22,6 +22,38 @@ export interface IndocListResponse {
   page_next_token?: string
 }
 
+//WEB
+export interface WebIndocListItem {
+  indoc_id: string
+  indoc_type: 'goods_supply_task' | 'goods_shipment_task' | 'orders_shipment_task' | 'goods_from_long_storage_task'
+  indoc_type_descrip: string
+  indoc_txt?: string
+  created_at: string
+  outdocs?: Array<{
+    outdoc_id: number
+    outdoc_type: string
+    outdoc_type_descrip: string
+    outdoc_date: string
+    outdoc_txt?: string
+    created_at: string
+  }>
+}
+
+export interface WebIndocListRequest {
+  indoc_ids?: string[]
+  from_date?: string
+  to_date?: string
+  indoc_type?: string
+  page_size?: number
+  page_token?: string
+}
+
+export interface WebIndocListResponse {
+  success: boolean
+  items: WebIndocListItem[]
+  page_next_token?: string
+}
+
 export interface IndocFile {
   file_name: string
   copy_qnt: number

@@ -77,11 +77,11 @@ export default function OrdersListPage() {
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
-                <th className="th">{FIELDS.order_id.label}</th>
+                <th className="th">{FIELDS.order_id.short}</th>
                 <th className="th">{FIELDS.created_at.short}</th>
-                <th className="th">{FIELDS.state.label}</th>
-                <th className="th">{FIELDS.origin.label}</th>
-                <th className="th">{FIELDS.delivery_id.label}</th>
+                <th className="th">{FIELDS.state.short}</th>
+                <th className="th">{FIELDS.origin.short}</th>
+                <th className="th">{FIELDS.delivery_id.short}</th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">

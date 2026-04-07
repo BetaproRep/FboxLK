@@ -39,11 +39,11 @@ export default function GoodsListPage() {
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
-                <th className="th">{FIELDS.good_id.label}</th>
-                <th className="th">{FIELDS.good_name.label}</th>
+                <th className="th">{FIELDS.good_id.short}</th>
+                <th className="th">{FIELDS.good_name.short}</th>
                 <th className="th">{FIELDS.good_type.short}</th>
                 <th className="th">{FIELDS.gtr_name.short}</th>
-                <th className="th">{FIELDS.weight.label}</th>
+                <th className="th">{FIELDS.weight.short}</th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">

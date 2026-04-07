@@ -1,5 +1,7 @@
 import { apiClient } from './client'
 import type {
+  WebIndocListRequest,
+  WebIndocListResponse,
   IndocListRequest,
   IndocListResponse,
   IndocCreate,
@@ -9,6 +11,11 @@ import type {
 } from '@/types/indoc'
 
 export const indocsApi = {
+  webList: async (params: WebIndocListRequest): Promise<WebIndocListResponse> => {
+    const { data } = await apiClient.post('/web/indocs/list', params)
+    return data
+  },
+
   list: async (params: IndocListRequest): Promise<IndocListResponse> => {
     const { data } = await apiClient.post('/indocs/list', params)
     return data

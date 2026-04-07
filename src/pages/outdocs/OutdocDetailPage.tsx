@@ -89,9 +89,9 @@ export default function OutdocDetailPage() {
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
-                  <th className="th">{FIELDS.good_id.label}</th>
+                  <th className="th">{FIELDS.good_id.short}</th>
                   <th className="th">Состояние</th>
-                  <th className="th">{FIELDS.qual_type.label}</th>
+                  <th className="th">{FIELDS.qual_type.short}</th>
                   <th className="th text-right">{FIELDS.qnt.short}</th>
                 </tr>
               </thead>
@@ -118,10 +118,10 @@ export default function OutdocDetailPage() {
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
-                  <th className="th">{FIELDS.good_sn.label}</th>
-                  <th className="th">{FIELDS.good_id.label}</th>
-                  <th className="th">{FIELDS.qual_type.label}</th>
-                  <th className="th">{FIELDS.inout.label}</th>
+                  <th className="th">{FIELDS.good_sn.short}</th>
+                  <th className="th">{FIELDS.good_id.short}</th>
+                  <th className="th">{FIELDS.qual_type.short}</th>
+                  <th className="th">{FIELDS.inout.short}</th>
                   <th className="th">{FIELDS.order_id.short}</th>
                 </tr>
               </thead>

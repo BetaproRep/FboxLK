@@ -107,9 +107,9 @@ export default function OrderDetailPage() {
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
-                  <th className="th">{FIELDS.good_id.label}</th>
+                  <th className="th">{FIELDS.good_id.short}</th>
                   <th className="th text-right">{FIELDS.qnt.short}</th>
-                  <th className="th text-right">{FIELDS.price.label}</th>
+                  <th className="th text-right">{FIELDS.price.short}</th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
@@ -133,7 +133,7 @@ export default function OrderDetailPage() {
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
-                  <th className="th">{FIELDS.event_type.label}</th>
+                  <th className="th">{FIELDS.event_type.short}</th>
                   <th className="th">{FIELDS.created_at.short}</th>
                 </tr>
               </thead>

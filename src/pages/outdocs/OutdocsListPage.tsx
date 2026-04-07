@@ -158,7 +158,7 @@ export default function OutdocsListPage() {
                     ['outdoc_type_descrip', FIELDS.outdoc_type_descrip.short],
                     ['outdoc_date', FIELDS.outdoc_date.short],
                     ['created_at', FIELDS.created_at.short],
-                    ['outdoc_txt', FIELDS.outdoc_txt.label],
+                    ['outdoc_txt', FIELDS.outdoc_txt.short],
                   ] as [SortKey, string][]
                 ).map(([key, label]) => (
                   <th
@@ -170,7 +170,7 @@ export default function OutdocsListPage() {
                     <SortIcon active={sortKey === key} dir={sortDir} />
                   </th>
                 ))}
-                <th className="th">{FIELDS.locked.label}</th>
+                <th className="th">{FIELDS.locked.short}</th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">

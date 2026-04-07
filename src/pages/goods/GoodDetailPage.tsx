@@ -99,9 +99,9 @@ export default function GoodDetailPage() {
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
-                  <th className="th">{FIELDS.attribute_name.label}</th>
+                  <th className="th">{FIELDS.attribute_name.short}</th>
                   <th className="th">{FIELDS.attribute_type.short}</th>
-                  <th className="th">{FIELDS.value.label}</th>
+                  <th className="th">{FIELDS.value.short}</th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
@@ -130,8 +130,8 @@ export default function GoodDetailPage() {
                 <tr>
                   <th className="th">{FIELDS.outdoc_date.short}</th>
                   <th className="th">{FIELDS.created_at.short}</th>
-                  <th className="th">{FIELDS.outdoc_type_descrip.label}</th>
-                  <th className="th">{FIELDS.qual_type.label}</th>
+                  <th className="th">{FIELDS.outdoc_type_descrip.short}</th>
+                  <th className="th">{FIELDS.qual_type.short}</th>
                   <th className="th text-right">{FIELDS.qnt.short}</th>
                 </tr>
               </thead>
