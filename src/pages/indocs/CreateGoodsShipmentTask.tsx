@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, FormEvent } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import toast from 'react-hot-toast' // используется для финального "Документ создан" после закрытия модала
+import toast from 'react-hot-toast'
 import { indocsApi } from '@/api/indocs'
 import DownloadFilesModal from '@/components/ui/DownloadFilesModal'
 import { goodsApi } from '@/api/goods'
@@ -9,6 +9,7 @@ import Modal from '@/components/ui/Modal'
 import FormAlert from '@/components/ui/FormAlert'
 import Spinner from '@/components/ui/Spinner'
 import { dict } from '@/constants/dict'
+import Hint from '@/components/ui/Hint'
 import { parseTemplate } from '@/utils/templateParser'
 import type { ParseError } from '@/utils/templateParser'
 
@@ -24,7 +25,6 @@ function GoodIdInput({
   onNameResolved: (name: string | undefined) => void
 }) {
   const [committed, setCommitted] = useState('')
-  // Ref чтобы не включать колбэк в deps useEffect
   const onNameResolvedRef = useRef(onNameResolved)
   onNameResolvedRef.current = onNameResolved
 
@@ -70,16 +70,17 @@ interface ItemRow {
 
 const emptyItem = (): ItemRow => ({ good_id: '', plan_qnt: '1' })
 
-// Создаём поставку (goods_supply_task) с одним или более товарами
 interface Alert {
   type: 'error' | 'success' | 'warning'
   message: string
 }
 
-export default function CreateGoodsSupplyTask({ isOpen, onClose }: Props) {
+export default function CreateGoodsShipmentTask({ isOpen, onClose }: Props) {
   const qc = useQueryClient()
   const [indocId, setIndocId] = useState('')
   const [indocTxt, setIndocTxt] = useState('')
+  const [qualType, setQualType] = useState<'useful' | 'defective'>('useful')
+  const [pickingOnly, setPickingOnly] = useState(false)
   const [items, setItems] = useState<ItemRow[]>([emptyItem()])
   const [showErrors, setShowErrors] = useState(false)
   const [alert, setAlert] = useState<Alert | null>(null)
@@ -90,7 +91,6 @@ export default function CreateGoodsSupplyTask({ isOpen, onClose }: Props) {
     setItems((prev) =>
       prev.map((row, i) => {
         if (i !== index) return row
-        // При ручном изменении good_id сбрасываем ранее полученное имя
         if (field === 'good_id') return { ...row, good_id: value, good_name: undefined }
         return { ...row, [field]: value }
       })
@@ -172,7 +172,7 @@ export default function CreateGoodsSupplyTask({ isOpen, onClose }: Props) {
 
     const errCount = errors.length
     if (errCount > 0) {
-      setAlert({ type: 'warning', message: `Загружено ${parsed.length} позиций. Найдено ошибок разбора: ${errCount}. Исправьте ошибки в Excel и выполните загрузку товаров повторно.` })
+      setAlert({ type: 'warning', message: `Загружено ${parsed.length} позиций. Найдено ошибок разбора: ${errCount}. Исправьте ошибки в Excel и выполните загрузку повторно.` })
     } else {
       setAlert({ type: 'success', message: `Загружено ${parsed.length} позиций` })
     }
@@ -181,9 +181,11 @@ export default function CreateGoodsSupplyTask({ isOpen, onClose }: Props) {
   const mutation = useMutation({
     mutationFn: () =>
       indocsApi.create({
-        indoc_type: 'goods_supply_task',
+        indoc_type: 'goods_shipment_task',
         indoc_id: indocId.trim(),
         indoc_txt: indocTxt || undefined,
+        qual_type: qualType,
+        picking_only: pickingOnly || undefined,
         items: items.map((row) => ({ ...row.extra, good_id: row.good_id.trim(), plan_qnt: Number(row.plan_qnt) })),
       }),
     onSuccess: () => {
@@ -192,6 +194,8 @@ export default function CreateGoodsSupplyTask({ isOpen, onClose }: Props) {
       onClose()
       setIndocId('')
       setIndocTxt('')
+      setQualType('useful')
+      setPickingOnly(false)
       setItems([emptyItem()])
       setShowErrors(false)
       setAlert(null)
@@ -211,7 +215,7 @@ export default function CreateGoodsSupplyTask({ isOpen, onClose }: Props) {
     }
     const hasParseErrors = filledItems.some((r) => r.errors && r.errors.length > 0)
     if (hasParseErrors) {
-      setAlert({ type: 'error', message: 'Исправьте ошибки в Excel и выполните загрузку товаров повторно.' })
+      setAlert({ type: 'error', message: 'Исправьте ошибки в Excel и выполните загрузку повторно.' })
       return
     }
     const hasInvalidId = filledItems.some((r) => r.good_name === '')
@@ -227,22 +231,22 @@ export default function CreateGoodsSupplyTask({ isOpen, onClose }: Props) {
 
   return (
     <>
-    <DownloadFilesModal isOpen={downloadOpen} onClose={() => setDownloadOpen(false)} fileType={2} />
+    <DownloadFilesModal isOpen={downloadOpen} onClose={() => setDownloadOpen(false)} fileType={3} />
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title="Задание на оприходование товаров"
+      title="Задание на отгрузку товаров"
       size="xl"
       headerActions={
         <>
-          <button type="submit" form="create-goods-supply-form" className="btn-primary" disabled={mutation.isPending}>
+          <button type="submit" form="create-goods-shipment-form" className="btn-primary" disabled={mutation.isPending}>
             {mutation.isPending && <Spinner className="w-4 h-4 text-white" />}
             Создать документ
           </button>
         </>
       }
     >
-      <form id="create-goods-supply-form" onSubmit={handleSubmit} className="flex flex-col flex-1 overflow-hidden">
+      <form id="create-goods-shipment-form" onSubmit={handleSubmit} className="flex flex-col flex-1 overflow-hidden">
         {alert && (
           <div className="mb-4 shrink-0">
             <FormAlert type={alert.type} message={alert.message} onClose={() => setAlert(null)} />
@@ -260,7 +264,7 @@ export default function CreateGoodsSupplyTask({ isOpen, onClose }: Props) {
                 value={indocId}
                 onChange={(e) => setIndocId(e.target.value)}
                 required
-                placeholder="Поставка-2024-001"
+                placeholder="Отгрузка-2024-001"
               />
               <button
                 type="button"
@@ -272,13 +276,53 @@ export default function CreateGoodsSupplyTask({ isOpen, onClose }: Props) {
                   const dd = String(now.getDate()).padStart(2, '0')
                   const HH = String(now.getHours()).padStart(2, '0')
                   const MI = String(now.getMinutes()).padStart(2, '0')
-                  setIndocId(`GS-${yy}-${mm}-${dd}-${HH}${MI}`)
+                  setIndocId(`GH-${yy}-${mm}-${dd}-${HH}${MI}`)
                 }}
               >
                 Сгенерировать
               </button>
             </div>
             <p className="mt-1 text-xs text-gray-400">Уникальный номер в вашей системе</p>
+          </div>
+          <div className="flex gap-6">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Качество товара</label>
+              <div className="flex gap-4 mt-2">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="qual_type"
+                    value="useful"
+                    checked={qualType === 'useful'}
+                    onChange={() => setQualType('useful')}
+                  />
+                  <span className="text-sm text-gray-700">Нормальный</span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="qual_type"
+                    value="defective"
+                    checked={qualType === 'defective'}
+                    onChange={() => setQualType('defective')}
+                  />
+                  <span className="text-sm text-gray-700">Бракованный</span>
+                </label>
+              </div>
+            </div>
+            <div className="flex items-end pb-0.5">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={pickingOnly}
+                  onChange={(e) => setPickingOnly(e.target.checked)}
+                  className="w-4 h-4 rounded border-gray-300 text-primary-600"
+                />
+                <Hint text="Используется для выполнения операций с товаром на складе типа фотографирования, проверки брака">
+                  <span className="text-sm text-gray-700">Только подбор (без отгрузки)</span>
+                </Hint>
+              </label>
+            </div>
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">{dict('indoc_txt')}</label>

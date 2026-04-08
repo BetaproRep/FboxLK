@@ -9,6 +9,7 @@ import DateRangeFilter from '@/components/ui/DateRangeFilter'
 import EmptyState from '@/components/ui/EmptyState'
 import Spinner from '@/components/ui/Spinner'
 import CreateGoodsSupplyTask from './CreateGoodsSupplyTask'
+import CreateGoodsShipmentTask from './CreateGoodsShipmentTask'
 import CreateOrdersShipmentTask from './CreateOrdersShipmentTask'
 import { dict } from '@/constants/dict'
 import Hint from '@/components/ui/Hint'
@@ -79,6 +80,7 @@ export default function IndocsListPage() {
   const [pageToken, setPageToken] = useState<string | undefined>()
   const [allItems, setAllItems] = useState<WebIndocListItem[]>([])
   const [showCreateSupply, setShowCreateSupply] = useState(false)
+  const [showCreateGoodsShipment, setShowCreateGoodsShipment] = useState(false)
   const [showCreateOrdersShipment, setShowCreateOrdersShipment] = useState(false)
   const [indocType, setIndocType] = useState(() => sessionStorage.getItem('indocs_indoc_type') ?? '')
   const [search, setSearch] = useState(() => sessionStorage.getItem('indocs_search') ?? '')
@@ -255,6 +257,9 @@ export default function IndocsListPage() {
           <div className="flex gap-2">
             <button className="btn-primary" onClick={() => setShowCreateSupply(true)}>
               + Задание на оприходование товаров
+            </button>
+            <button className="btn-primary" onClick={() => setShowCreateGoodsShipment(true)}>
+              + Задание на отгрузку товаров
             </button>
             <button className="btn-primary" onClick={() => setShowCreateOrdersShipment(true)}>
               + Задание на отгрузку заказов
@@ -433,6 +438,7 @@ export default function IndocsListPage() {
       </div>
 
       <CreateGoodsSupplyTask isOpen={showCreateSupply} onClose={() => setShowCreateSupply(false)} />
+      <CreateGoodsShipmentTask isOpen={showCreateGoodsShipment} onClose={() => setShowCreateGoodsShipment(false)} />
       <CreateOrdersShipmentTask isOpen={showCreateOrdersShipment} onClose={() => setShowCreateOrdersShipment(false)} />
     </>
   )

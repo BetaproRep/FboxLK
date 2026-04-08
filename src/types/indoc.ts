@@ -143,7 +143,22 @@ export interface IndocCreateGoodsSupply {
   indoc_txt?: string
   items: Array<{
     good_id: string
-    qnt: number
+    plan_qnt: number
+    [key: string]: unknown
+  }>
+}
+
+// POST /indocs — создание задания на отгрузку товаров
+export interface IndocCreateGoodsShipment {
+  indoc_type: 'goods_shipment_task'
+  indoc_id: string
+  indoc_txt?: string
+  qual_type?: 'useful' | 'defective'
+  picking_only?: boolean
+  items: Array<{
+    good_id: string
+    plan_qnt: number
+    [key: string]: unknown
   }>
 }
 
@@ -155,4 +170,4 @@ export interface IndocCreateOrdersShipment {
   orders: OrderCreateItem[]
 }
 
-export type IndocCreate = IndocCreateGoodsSupply | IndocCreateOrdersShipment
+export type IndocCreate = IndocCreateGoodsSupply | IndocCreateGoodsShipment | IndocCreateOrdersShipment

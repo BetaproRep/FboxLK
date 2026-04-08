@@ -294,33 +294,46 @@ export function parseTemplate<T = Record<string, unknown>>(
     }
   }
 
-  // Проверяем наличие поля-идентификатора (!)
+  // Проверяем наличие/отсутствие ! в зависимости от наличия массивов в схеме
+  const hasArrays = schemas.some(s => s?.isArray)
   const keyColIdx = schemas.findIndex(s => s?.isKey)
-  if (keyColIdx === -1) {
-    schemaErrors.push({ col: -1, dsl: '', message: 'не найдено поле-идентификатор объекта — добавьте ! к нужному полю DSL' })
+
+  if (hasArrays && keyColIdx === -1) {
+    schemaErrors.push({ col: -1, dsl: '', message: 'шаблон содержит массивы — необходимо поле-идентификатор объекта (!)'  })
+  } else if (!hasArrays && keyColIdx !== -1) {
+    schemaErrors.push({ col: keyColIdx, dsl: schemas[keyColIdx]?.dsl ?? '', message: 'поле-идентификатор (!) не нужно — в шаблоне нет массивов' })
   }
 
   if (schemaErrors.length > 0) return { ...empty, schemaErrors }
 
   // Группируем строки по объектам
   const groups: Array<{ fileRowStart: number; rows: unknown[][] }> = []
-  let currentRows: unknown[][] = []
-  let prevKeyVal: unknown = Symbol('none')
 
-  for (let i = 2; i < rows.length; i++) {
-    const row = rows[i] as unknown[]
-    const keyVal = row[keyColIdx]
-    const isNewObject = keyVal !== '' && keyVal !== undefined && keyVal !== null && keyVal !== prevKeyVal
-
-    if (isNewObject) {
-      if (currentRows.length > 0) groups.push({ fileRowStart: i - currentRows.length, rows: currentRows })
-      currentRows = [row]
-      prevKeyVal = keyVal
-    } else {
-      currentRows.push(row)
+  if (!hasArrays) {
+    // Нет массивов — каждая строка данных является отдельным объектом
+    for (let i = 2; i < rows.length; i++) {
+      groups.push({ fileRowStart: i, rows: [rows[i] as unknown[]] })
     }
+  } else {
+    // Есть массивы — группируем строки по смене значения ключевого поля
+    let currentRows: unknown[][] = []
+    let prevKeyVal: unknown = Symbol('none')
+
+    for (let i = 2; i < rows.length; i++) {
+      const row = rows[i] as unknown[]
+      const keyVal = row[keyColIdx]
+      const isNewObject = keyVal !== '' && keyVal !== undefined && keyVal !== null && keyVal !== prevKeyVal
+
+      if (isNewObject) {
+        if (currentRows.length > 0) groups.push({ fileRowStart: i - currentRows.length, rows: currentRows })
+        currentRows = [row]
+        prevKeyVal = keyVal
+      } else {
+        currentRows.push(row)
+      }
+    }
+    if (currentRows.length > 0) groups.push({ fileRowStart: rows.length - currentRows.length, rows: currentRows })
   }
-  if (currentRows.length > 0) groups.push({ fileRowStart: rows.length - currentRows.length, rows: currentRows })
 
   // Обрабатываем каждую группу
   const errors: ParseError[] = []

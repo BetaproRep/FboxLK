@@ -167,13 +167,30 @@ export default function CreateOrdersShipmentTask({ isOpen, onClose }: Props) {
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 {dict('indoc_id')} <span className="text-red-500">*</span>
               </label>
-              <input
-                className="input"
-                value={indocId}
-                onChange={(e) => setIndocId(e.target.value)}
-                required
-                placeholder="Отгрузка-2024-001"
-              />
+              <div className="flex gap-2">
+                <input
+                  className="input flex-1"
+                  value={indocId}
+                  onChange={(e) => setIndocId(e.target.value)}
+                  required
+                  placeholder="Отгрузка-2024-001"
+                />
+                <button
+                  type="button"
+                  className="btn-secondary shrink-0"
+                  onClick={() => {
+                    const now = new Date(new Date().toLocaleString('en-US', { timeZone: 'Europe/Moscow' }))
+                    const yy = String(now.getFullYear()).slice(2)
+                    const mm = String(now.getMonth() + 1).padStart(2, '0')
+                    const dd = String(now.getDate()).padStart(2, '0')
+                    const HH = String(now.getHours()).padStart(2, '0')
+                    const MI = String(now.getMinutes()).padStart(2, '0')
+                    setIndocId(`OS-${yy}-${mm}-${dd}-${HH}${MI}`)
+                  }}
+                >
+                  Сгенерировать
+                </button>
+              </div>
               <p className="mt-1 text-xs text-gray-400">Уникальный номер в вашей системе</p>
             </div>
             <div>
@@ -225,12 +242,12 @@ export default function CreateOrdersShipmentTask({ isOpen, onClose }: Props) {
               </div>
             ) : (
               <>
-                <div className="grid grid-cols-[2fr_1fr_2fr_auto_auto] gap-x-2 mb-1 px-2 shrink-0">
-                  <span className="text-xs text-gray-500">{dict('order_id')}</span>
-                  <span className="text-xs text-gray-500">{dict('delivery_id')}</span>
+                <div className="grid grid-cols-[2fr_2fr_1fr_auto_auto] gap-x-2 mb-1 border border-transparent px-2 shrink-0">
+                  <span className="text-xs text-gray-500">{dict('order_id', 'short')}</span>
                   <span className="text-xs text-gray-500">Клиент</span>
-                  <span />
-                  <span />
+                  <span className="text-xs text-gray-500">Кол-во товаров</span>
+                  <span className="invisible text-xs font-mono px-1">{'{}'}</span>
+                  <span className="invisible px-1">✕</span>
                 </div>
                 <div className="overflow-y-auto flex-1 pr-1">
                   {entries.map(({ order, errors }, i) => (
@@ -238,10 +255,10 @@ export default function CreateOrdersShipmentTask({ isOpen, onClose }: Props) {
                       key={i}
                       className={`mb-1 rounded border ${errors.length > 0 ? 'border-red-300' : 'border-gray-200'}`}
                     >
-                      <div className="grid grid-cols-[2fr_1fr_2fr_auto_auto] gap-x-2 items-center px-2 py-1.5">
+                      <div className="grid grid-cols-[2fr_2fr_1fr_auto_auto] gap-x-2 items-center px-2 py-1.5">
                         <span className="text-sm font-medium text-primary-700 truncate">{order.order_id}</span>
-                        <span className="text-sm text-gray-500">{order.delivery_id}</span>
                         <span className="text-sm text-gray-500 truncate">{(order as Record<string, any>).client?.name ?? '—'}</span>
+                        <span className="text-sm text-gray-500">{(order as Record<string, any>).goods?.length ?? '—'}</span>
                         <button
                           type="button"
                           className="text-xs font-mono text-gray-400 hover:text-gray-700 px-1"

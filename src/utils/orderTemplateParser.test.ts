@@ -185,7 +185,7 @@ describe('parseOrderTemplate', () => {
   })
 
   it('bool: принимает "да", "YES", 1', () => {
-    const dsl   = ['order_id:str*!', 'delivery_id:int*', 'delivery.part_deliv:bool']
+    const dsl   = ['order_id:str*', 'delivery_id:int*', 'delivery.part_deliv:bool']
     const rows  = [['h1','h2','h3'], dsl, ['ORD-1', 101, 'да']]
     expect((parseOrderTemplate(rows).orders[0] as Record<string, any>).delivery?.part_deliv).toBe(true)
 
@@ -197,7 +197,7 @@ describe('parseOrderTemplate', () => {
   })
 
   it('bool: неизвестное значение → ошибка', () => {
-    const dsl  = ['order_id:str*!', 'delivery_id:int*', 'delivery.part_deliv:bool']
+    const dsl  = ['order_id:str*', 'delivery_id:int*', 'delivery.part_deliv:bool']
     const rows = [['h1','h2','h3'], dsl, ['ORD-1', 101, 'maybe']]
     const { errors } = parseOrderTemplate(rows)
     expect(errors.length).toBeGreaterThan(0)
@@ -522,14 +522,14 @@ describe('parseOrderTemplate — regex', () => {
 
   it('regex применяется к исходной строке (до coerce), trim учитывается', () => {
     // Поле int с regex — raw " 4 " trim → "4" → проходит ^\d+$
-    const dslInt = ['order_id:str*!', 'val:int{^\\d+$~Только цифры}', '', '']
+    const dslInt = ['order_id:str*', 'val:int{^\\d+$~Только цифры}', '', '']
     const rows   = [H, dslInt, ['ORD-1', ' 4 ', '', '']]
     const { errors } = parseOrderTemplate(rows)
     expect(errors).toHaveLength(0)
   })
 
   it('regex применяется перед coerce — невалидный формат даёт ошибку regex, не ошибку типа', () => {
-    const dslInt = ['order_id:str*!', 'val:int{^\\d+$~Только цифры}', '', '']
+    const dslInt = ['order_id:str*', 'val:int{^\\d+$~Только цифры}', '', '']
     const rows   = [H, dslInt, ['ORD-1', 'abc', '', '']]
     const { errors } = parseOrderTemplate(rows)
     // сначала coerce int провалится ("ожидается целое число"), до regex не дойдёт
@@ -565,48 +565,65 @@ describe('parseColumnSchema — isKey (!)', () => {
 // ── parseTemplate: schema errors ─────────────────────────────────────────────
 
 describe('parseTemplate — schemaErrors', () => {
-  const H = ['Заказ', 'Доставка']
+  const H = ['Заказ', 'Доставка', 'Товар']
 
-  it('нет ! в DSL → schemaError, items пустой', () => {
-    const dsl = ['order_id:str*', 'delivery_id:int*']
-    const { items, schemaErrors } = parseTemplate([H, dsl, ['ORD-1', 101]])
+  it('есть массивы, нет ! → schemaError', () => {
+    const dsl = ['order_id:str*', 'delivery_id:int*', 'goods[].good_id:str*']
+    const { items, schemaErrors } = parseTemplate([H, dsl, ['ORD-1', 101, 'AR-1']])
     expect(items).toHaveLength(0)
     expect(schemaErrors).toHaveLength(1)
     expect(schemaErrors[0].col).toBe(-1)
     expect(schemaErrors[0].message).toContain('!')
   })
 
-  it('непустой DSL не парсится → schemaError с номером колонки', () => {
-    const dsl = ['order_id:str*!', 'BAD_DSL_NO_COLON']
+  it('нет массивов, нет ! → валидно, каждая строка = объект', () => {
+    const dsl = ['order_id:str*', 'delivery_id:int*']
+    const { items, schemaErrors } = parseTemplate([H, dsl, ['ORD-1', 101], ['ORD-2', 202]])
+    expect(schemaErrors).toHaveLength(0)
+    expect(items).toHaveLength(2)
+    expect((items[0] as Record<string, unknown>).order_id).toBe('ORD-1')
+    expect((items[1] as Record<string, unknown>).order_id).toBe('ORD-2')
+  })
+
+  it('нет массивов, но есть ! → schemaError', () => {
+    const dsl = ['order_id:str*!', 'delivery_id:int*']
     const { items, schemaErrors } = parseTemplate([H, dsl, ['ORD-1', 101]])
+    expect(items).toHaveLength(0)
+    expect(schemaErrors).toHaveLength(1)
+    expect(schemaErrors[0].col).toBe(0)
+    expect(schemaErrors[0].message).toContain('!')
+  })
+
+  it('непустой DSL не парсится → schemaError с номером колонки', () => {
+    const dsl = ['order_id:str*!', 'BAD_DSL_NO_COLON', 'goods[].good_id:str*']
+    const { items, schemaErrors } = parseTemplate([H, dsl, ['ORD-1', 101, 'AR-1']])
     expect(items).toHaveLength(0)
     expect(schemaErrors).toHaveLength(1)
     expect(schemaErrors[0].col).toBe(1)
     expect(schemaErrors[0].dsl).toBe('BAD_DSL_NO_COLON')
   })
 
-  it('несколько ошибок DSL → все попадают в schemaErrors', () => {
-    const dsl = ['BROKEN', 'ALSO_BROKEN', 'int(4,23']  // нет ! и три сломанных
-    const { schemaErrors } = parseTemplate([H, dsl, ['ORD-1', 101]])
-    // три сломанных DSL + нет !
-    expect(schemaErrors.length).toBeGreaterThanOrEqual(4)
-  })
-
   it('при schemaErrors errors всегда пустой', () => {
-    const dsl = ['order_id:str*']  // нет !
-    const { errors, schemaErrors } = parseTemplate([H, dsl, ['ORD-1', 101]])
+    const dsl = ['order_id:str*', 'goods[].good_id:str*']  // массив есть, ! нет
+    const { errors, schemaErrors } = parseTemplate([H, dsl, ['ORD-1', 'AR-1']])
     expect(schemaErrors.length).toBeGreaterThan(0)
     expect(errors).toHaveLength(0)
   })
 
-  it('валидная схема → schemaErrors пустой', () => {
-    const dsl = ['order_id:str*!', 'delivery_id:int*']
+  it('валидная схема с массивами → schemaErrors пустой', () => {
+    const dsl = ['order_id:str*!', 'delivery_id:int*', 'goods[].good_id:str*']
+    const { schemaErrors } = parseTemplate([H, dsl, ['ORD-1', 101, 'AR-1']])
+    expect(schemaErrors).toHaveLength(0)
+  })
+
+  it('валидная схема без массивов → schemaErrors пустой', () => {
+    const dsl = ['order_id:str*', 'delivery_id:int*']
     const { schemaErrors } = parseTemplate([H, dsl, ['ORD-1', 101]])
     expect(schemaErrors).toHaveLength(0)
   })
 
   it('менее 3 строк → пустой результат без ошибок', () => {
-    const { items, errors, schemaErrors } = parseTemplate([H, ['order_id:str*!']])
+    const { items, errors, schemaErrors } = parseTemplate([H, ['order_id:str*']])
     expect(items).toHaveLength(0)
     expect(errors).toHaveLength(0)
     expect(schemaErrors).toHaveLength(0)

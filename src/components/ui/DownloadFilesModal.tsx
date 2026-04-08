@@ -67,7 +67,7 @@ export default function DownloadFilesModal({ isOpen, onClose, fileType }: Props)
   const hasCustom = customFiles.length > 0
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title={data?.form_name ?? 'Загрузка файлов'} size="sm">
+    <Modal isOpen={isOpen} onClose={onClose} title={data?.form_name ?? 'Загрузка файлов'} size="sm" zIndex="z-[60]">
       {isLoading && (
         <div className="flex justify-center py-8">
           <Spinner />
