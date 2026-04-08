@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import * as XLSX from 'xlsx'
@@ -10,7 +10,8 @@ import EmptyState from '@/components/ui/EmptyState'
 import Spinner from '@/components/ui/Spinner'
 import CreateGoodsSupplyTask from './CreateGoodsSupplyTask'
 import CreateOrdersShipmentTask from './CreateOrdersShipmentTask'
-import { FIELDS } from '@/constants/fields'
+import { dict } from '@/constants/dict'
+import Hint from '@/components/ui/Hint'
 
 type SortKey = 'indoc_id' | 'indoc_type_descrip' | 'created_at' | 'indoc_txt'
 type SortDir = 'asc' | 'desc'
@@ -84,6 +85,18 @@ export default function IndocsListPage() {
   const [sortKey, setSortKey] = useState<SortKey>('created_at')
   const [sortDir, setSortDir] = useState<SortDir>('desc')
   const [clipboardError, setClipboardError] = useState<string | null>(null)
+  const clipboardErrorRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!clipboardError) return
+    function handleClickOutside(e: MouseEvent) {
+      if (clipboardErrorRef.current && !clipboardErrorRef.current.contains(e.target as Node)) {
+        setClipboardError(null)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [clipboardError])
 
   const [clipboardRows, setClipboardRows] = useState<ClipboardRow[] | null>(() => {
     try {
@@ -116,7 +129,7 @@ export default function IndocsListPage() {
     const text = await navigator.clipboard.readText()
     const rows = parseClipboard(text)
     if (rows.length === 0) {
-      setClipboardError('Скопируйте список номеров документа из экселя в буфер обмена')
+      setClipboardError('Скопируйте номер документа или список номеров из excel в буфер обмена. Затем нажмите эту кнопку')
       return
     }
     setClipboardError(null)
@@ -208,11 +221,11 @@ export default function IndocsListPage() {
     if (mergedRows) {
       const rows = mergedRows.map((r) => ({
         '#': r.rowNum,
-        [FIELDS.indoc_id.short]: r.indoc_id,
+        [dict('indoc_id', 'short')]: r.indoc_id,
         'Примечание': r.note,
-        [FIELDS.indoc_type_descrip.short]: r.item?.indoc_type_descrip ?? 'Документ не найден',
-        [FIELDS.created_at.short]: r.item ? new Date(r.item.created_at).toLocaleString() : '',
-        [FIELDS.indoc_txt.short]: r.item?.indoc_txt ?? '',
+        [dict('indoc_type_descrip', 'short')]: r.item?.indoc_type_descrip ?? 'Документ не найден',
+        [dict('created_at', 'short')]: r.item ? new Date(r.item.created_at).toLocaleString() : '',
+        [dict('indoc_txt', 'short')]: r.item?.indoc_txt ?? '',
       }))
       const ws = XLSX.utils.json_to_sheet(rows)
       const wb = XLSX.utils.book_new()
@@ -220,10 +233,10 @@ export default function IndocsListPage() {
       XLSX.writeFile(wb, `indocs_list.xlsx`)
     } else {
       const rows = sortedItems.map((item) => ({
-        [FIELDS.indoc_id.short]: item.indoc_id,
-        [FIELDS.indoc_type_descrip.short]: item.indoc_type_descrip,
-        [FIELDS.created_at.short]: new Date(item.created_at).toLocaleString(),
-        [FIELDS.indoc_txt.short]: item.indoc_txt ?? '',
+        [dict('indoc_id', 'short')]: item.indoc_id,
+        [dict('indoc_type_descrip', 'short')]: item.indoc_type_descrip,
+        [dict('created_at', 'short')]: new Date(item.created_at).toLocaleString(),
+        [dict('indoc_txt', 'short')]: item.indoc_txt ?? '',
       }))
       const ws = XLSX.utils.json_to_sheet(rows)
       const wb = XLSX.utils.book_new()
@@ -263,12 +276,20 @@ export default function IndocsListPage() {
             </button>
           </span>
         ) : (
-          <div className="flex flex-col gap-1">
-            <button className="btn-secondary" onClick={loadFromClipboard}>
-              По списку документов из буфера
-            </button>
+          <div className="relative inline-block" ref={clipboardErrorRef}>
+            <Hint text={dict('btn.clipboard_load', 'hint')}>
+              <button className="btn-secondary" onClick={loadFromClipboard}>
+                По списку документов из буфера
+              </button>
+            </Hint>
             {clipboardError && (
-              <span className="text-red-500 text-xs">{clipboardError}</span>
+              <div className="absolute left-0 top-full mt-2 z-50 w-72">
+                <div className="absolute -top-1.5 left-4 w-3 h-3 bg-gray-800 rotate-45" />
+                <div className="relative bg-gray-800 rounded-md px-3 py-2.5 text-sm text-white flex items-start gap-2 shadow-lg">
+                  <span className="mt-0.5 flex-shrink-0 w-4 h-4 rounded-full bg-red-500 flex items-center justify-center text-white text-xs font-bold leading-none">✕</span>
+                  <span dangerouslySetInnerHTML={{ __html: clipboardError }} />
+                </div>
+              </div>
             )}
           </div>
         )}
@@ -321,11 +342,11 @@ export default function IndocsListPage() {
             <thead className="bg-gray-50">
               <tr>
                 <th className="th w-12">#</th>
-                <th className="th">{FIELDS.created_at.short}</th>
-                <th className="th">{FIELDS.indoc_id.short}</th>
+                <th className="th"><Hint text={dict('created_at', 'hint')}>{dict('created_at', 'short')}</Hint></th>
+                <th className="th"><Hint text={dict('indoc_id', 'hint')}>{dict('indoc_id', 'short')}</Hint></th>
                 <th className="th">2-я колонка буфера</th>
-                <th className="th">{FIELDS.indoc_type_descrip.short}</th>
-                <th className="th">{FIELDS.indoc_txt.short}</th>
+                <th className="th"><Hint text={dict('indoc_type_descrip', 'hint')}>{dict('indoc_type_descrip', 'short')}</Hint></th>
+                <th className="th"><Hint text={dict('indoc_txt', 'hint')}>{dict('indoc_txt', 'short')}</Hint></th>
               </tr>
             </thead>
             {mergedRows.map((row) =>
@@ -365,19 +386,16 @@ export default function IndocsListPage() {
             <thead className="bg-gray-50">
               <tr>
                 {(
-                  [
-                    ['created_at', FIELDS.created_at.short],
-                    ['indoc_id', FIELDS.indoc_id.short],
-                    ['indoc_type_descrip', FIELDS.indoc_type_descrip.short],
-                    ['indoc_txt', FIELDS.indoc_txt.short],
-                  ] as [SortKey, string][]
-                ).map(([key, label]) => (
+                  ['created_at', 'indoc_id', 'indoc_type_descrip', 'indoc_txt'] as SortKey[]
+                ).map((key) => (
                   <th
                     key={key}
                     className="th cursor-pointer select-none hover:bg-gray-100"
                     onClick={() => handleSort(key)}
                   >
-                    {label}
+                    <Hint text={dict(key, 'hint')}>
+                      <span>{dict(key, 'short')}</span>
+                    </Hint>
                     <SortIcon active={sortKey === key} dir={sortDir} />
                   </th>
                 ))}

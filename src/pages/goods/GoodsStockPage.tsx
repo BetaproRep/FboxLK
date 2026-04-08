@@ -5,7 +5,8 @@ import type { GoodStock } from '@/types/good'
 import PageHeader from '@/components/ui/PageHeader'
 import EmptyState from '@/components/ui/EmptyState'
 import Spinner from '@/components/ui/Spinner'
-import { FIELDS } from '@/constants/fields'
+import { dict } from '@/constants/dict'
+import Hint from '@/components/ui/Hint'
 
 type Mode = 'current' | 'date' | 'expiry'
 
@@ -79,13 +80,13 @@ export default function GoodsStockPage() {
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
-                <th className="th">{FIELDS.good_id.short}</th>
-                <th className="th">{FIELDS.qual_type.short}</th>
-                <th className="th text-right">{FIELDS.stock.short}</th>
-                <th className="th text-right">{FIELDS.quarantine.short}</th>
-                <th className="th text-right">{FIELDS.long_storage.short}</th>
-                <th className="th text-right">{FIELDS.orders_inwork.short}</th>
-                <th className="th text-right">{FIELDS.orders_wait.short}</th>
+                <th className="th"><Hint text={dict('good_id', 'hint')}>{dict('good_id', 'short')}</Hint></th>
+                <th className="th"><Hint text={dict('qual_type', 'hint')}>{dict('qual_type', 'short')}</Hint></th>
+                <th className="th text-right"><Hint text={dict('stock', 'hint')}>{dict('stock', 'short')}</Hint></th>
+                <th className="th text-right"><Hint text={dict('quarantine', 'hint')}>{dict('quarantine', 'short')}</Hint></th>
+                <th className="th text-right"><Hint text={dict('long_storage', 'hint')}>{dict('long_storage', 'short')}</Hint></th>
+                <th className="th text-right"><Hint text={dict('orders_inwork', 'hint')}>{dict('orders_inwork', 'short')}</Hint></th>
+                <th className="th text-right"><Hint text={dict('orders_wait', 'hint')}>{dict('orders_wait', 'short')}</Hint></th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">

@@ -6,7 +6,8 @@ import type { GoodDetail } from '@/types/good'
 import PageHeader from '@/components/ui/PageHeader'
 import EmptyState from '@/components/ui/EmptyState'
 import Spinner from '@/components/ui/Spinner'
-import { FIELDS } from '@/constants/fields'
+import { dict } from '@/constants/dict'
+import Hint from '@/components/ui/Hint'
 
 type Tab = 'info' | 'movements' | 'eans' | 'photos' | 'sn'
 
@@ -63,11 +64,11 @@ export default function GoodDetailPage() {
       <div className="card p-6 mb-6">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-x-6 gap-y-4">
           {([
-            [FIELDS.gtr_name.label, good.gtr_name],
-            [FIELDS.weight.label, good.weight],
-            [FIELDS.length.label, good.length],
-            [FIELDS.width.label, good.width],
-            [FIELDS.height.label, good.height],
+            [dict('gtr_name'), good.gtr_name],
+            [dict('weight'), good.weight],
+            [dict('length'), good.length],
+            [dict('width'), good.width],
+            [dict('height'), good.height],
           ] as [string, unknown][]).map(([label, value]) => (
             <div key={label}>
               <p className="text-xs text-gray-500 uppercase tracking-wide">{label}</p>
@@ -99,9 +100,9 @@ export default function GoodDetailPage() {
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
-                  <th className="th">{FIELDS.attribute_name.short}</th>
-                  <th className="th">{FIELDS.attribute_type.short}</th>
-                  <th className="th">{FIELDS.value.short}</th>
+                  <th className="th"><Hint text={dict('attribute_name', 'hint')}>{dict('attribute_name', 'short')}</Hint></th>
+                  <th className="th"><Hint text={dict('attribute_type', 'hint')}>{dict('attribute_type', 'short')}</Hint></th>
+                  <th className="th"><Hint text={dict('value', 'hint')}>{dict('value', 'short')}</Hint></th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
@@ -128,11 +129,11 @@ export default function GoodDetailPage() {
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
-                  <th className="th">{FIELDS.outdoc_date.short}</th>
-                  <th className="th">{FIELDS.created_at.short}</th>
-                  <th className="th">{FIELDS.outdoc_type_descrip.short}</th>
-                  <th className="th">{FIELDS.qual_type.short}</th>
-                  <th className="th text-right">{FIELDS.qnt.short}</th>
+                  <th className="th"><Hint text={dict('outdoc_date', 'hint')}>{dict('outdoc_date', 'short')}</Hint></th>
+                  <th className="th"><Hint text={dict('created_at', 'hint')}>{dict('created_at', 'short')}</Hint></th>
+                  <th className="th"><Hint text={dict('outdoc_type_descrip', 'hint')}>{dict('outdoc_type_descrip', 'short')}</Hint></th>
+                  <th className="th"><Hint text={dict('qual_type', 'hint')}>{dict('qual_type', 'short')}</Hint></th>
+                  <th className="th text-right"><Hint text={dict('qnt', 'hint')}>{dict('qnt', 'short')}</Hint></th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">

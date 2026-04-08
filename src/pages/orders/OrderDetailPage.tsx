@@ -6,7 +6,8 @@ import type { OrderDetail } from '@/types/order'
 import PageHeader from '@/components/ui/PageHeader'
 import EmptyState from '@/components/ui/EmptyState'
 import Spinner from '@/components/ui/Spinner'
-import { FIELDS } from '@/constants/fields'
+import { dict } from '@/constants/dict'
+import Hint from '@/components/ui/Hint'
 
 const STATE_LABELS: Record<string, string> = {
   wait: 'Ожидание',
@@ -69,31 +70,31 @@ export default function OrderDetailPage() {
         <div className="grid grid-cols-2 md:grid-cols-3 gap-x-6 gap-y-4">
           {state && (
             <div>
-              <p className="text-xs text-gray-500 uppercase tracking-wide">{FIELDS.state.label}</p>
+              <p className="text-xs text-gray-500 uppercase tracking-wide">{dict('state')}</p>
               <p className="mt-1 font-medium">{STATE_LABELS[state] ?? state}</p>
             </div>
           )}
           {order.delivery_name && (
             <div>
-              <p className="text-xs text-gray-500 uppercase tracking-wide">{FIELDS.delivery_name.label}</p>
+              <p className="text-xs text-gray-500 uppercase tracking-wide">{dict('delivery_name')}</p>
               <p className="mt-1 font-medium">{order.delivery_name}</p>
             </div>
           )}
           {order.origin && (
             <div>
-              <p className="text-xs text-gray-500 uppercase tracking-wide">{FIELDS.origin.label}</p>
+              <p className="text-xs text-gray-500 uppercase tracking-wide">{dict('origin')}</p>
               <p className="mt-1 font-medium">{order.origin}</p>
             </div>
           )}
           {order.indoc_id && (
             <div>
-              <p className="text-xs text-gray-500 uppercase tracking-wide">{FIELDS.indoc_id.label}</p>
+              <p className="text-xs text-gray-500 uppercase tracking-wide">{dict('indoc_id')}</p>
               <p className="mt-1 font-mono text-sm">{order.indoc_id}</p>
             </div>
           )}
           {order.canceled != null && (
             <div>
-              <p className="text-xs text-gray-500 uppercase tracking-wide">{FIELDS.canceled.label}</p>
+              <p className="text-xs text-gray-500 uppercase tracking-wide">{dict('canceled')}</p>
               <p className="mt-1">{order.canceled ? 'Да' : 'Нет'}</p>
             </div>
           )}
@@ -107,9 +108,9 @@ export default function OrderDetailPage() {
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
-                  <th className="th">{FIELDS.good_id.short}</th>
-                  <th className="th text-right">{FIELDS.qnt.short}</th>
-                  <th className="th text-right">{FIELDS.price.short}</th>
+                  <th className="th"><Hint text={dict('good_id', 'hint')}>{dict('good_id', 'short')}</Hint></th>
+                  <th className="th text-right"><Hint text={dict('qnt', 'hint')}>{dict('qnt', 'short')}</Hint></th>
+                  <th className="th text-right"><Hint text={dict('price', 'hint')}>{dict('price', 'short')}</Hint></th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
@@ -133,8 +134,8 @@ export default function OrderDetailPage() {
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
-                  <th className="th">{FIELDS.event_type.short}</th>
-                  <th className="th">{FIELDS.created_at.short}</th>
+                  <th className="th"><Hint text={dict('event_type', 'hint')}>{dict('event_type', 'short')}</Hint></th>
+                  <th className="th"><Hint text={dict('created_at', 'hint')}>{dict('created_at', 'short')}</Hint></th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">

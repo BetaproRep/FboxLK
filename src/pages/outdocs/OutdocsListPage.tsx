@@ -7,7 +7,8 @@ import PageHeader from '@/components/ui/PageHeader'
 import DateRangeFilter from '@/components/ui/DateRangeFilter'
 import EmptyState from '@/components/ui/EmptyState'
 import Spinner from '@/components/ui/Spinner'
-import { FIELDS } from '@/constants/fields'
+import { dict } from '@/constants/dict'
+import Hint from '@/components/ui/Hint'
 
 type SortKey = 'outdoc_id' | 'outdoc_type_descrip' | 'outdoc_date' | 'created_at' | 'outdoc_txt'
 type SortDir = 'asc' | 'desc'
@@ -154,23 +155,21 @@ export default function OutdocsListPage() {
               <tr>
                 {(
                   [
-                    ['outdoc_id', FIELDS.outdoc_id.short],
-                    ['outdoc_type_descrip', FIELDS.outdoc_type_descrip.short],
-                    ['outdoc_date', FIELDS.outdoc_date.short],
-                    ['created_at', FIELDS.created_at.short],
-                    ['outdoc_txt', FIELDS.outdoc_txt.short],
-                  ] as [SortKey, string][]
-                ).map(([key, label]) => (
+                    'outdoc_id', 'outdoc_type_descrip', 'outdoc_date', 'created_at', 'outdoc_txt',
+                  ] as SortKey[]
+                ).map((key) => (
                   <th
                     key={key}
                     className="th cursor-pointer select-none hover:bg-gray-100"
                     onClick={() => handleSort(key)}
                   >
-                    {label}
+                    <Hint text={dict(key, 'hint')}>
+                      <span>{dict(key, 'short')}</span>
+                    </Hint>
                     <SortIcon active={sortKey === key} dir={sortDir} />
                   </th>
                 ))}
-                <th className="th">{FIELDS.locked.short}</th>
+                <th className="th"><Hint text={dict('locked', 'hint')}>{dict('locked', 'short')}</Hint></th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">

@@ -6,7 +6,8 @@ import type { GoodListItem } from '@/types/good'
 import PageHeader from '@/components/ui/PageHeader'
 import EmptyState from '@/components/ui/EmptyState'
 import Spinner from '@/components/ui/Spinner'
-import { FIELDS } from '@/constants/fields'
+import { dict } from '@/constants/dict'
+import Hint from '@/components/ui/Hint'
 
 export default function GoodsListPage() {
   const navigate = useNavigate()
@@ -39,11 +40,11 @@ export default function GoodsListPage() {
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
-                <th className="th">{FIELDS.good_id.short}</th>
-                <th className="th">{FIELDS.good_name.short}</th>
-                <th className="th">{FIELDS.good_type.short}</th>
-                <th className="th">{FIELDS.gtr_name.short}</th>
-                <th className="th">{FIELDS.weight.short}</th>
+                <th className="th"><Hint text={dict('good_id', 'hint')}>{dict('good_id', 'short')}</Hint></th>
+                <th className="th"><Hint text={dict('good_name', 'hint')}>{dict('good_name', 'short')}</Hint></th>
+                <th className="th"><Hint text={dict('good_type', 'hint')}>{dict('good_type', 'short')}</Hint></th>
+                <th className="th"><Hint text={dict('gtr_name', 'hint')}>{dict('gtr_name', 'short')}</Hint></th>
+                <th className="th"><Hint text={dict('weight', 'hint')}>{dict('weight', 'short')}</Hint></th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">

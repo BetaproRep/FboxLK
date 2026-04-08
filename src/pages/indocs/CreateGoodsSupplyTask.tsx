@@ -8,12 +8,12 @@ import type { GoodDetail } from '@/types/good'
 import Modal from '@/components/ui/Modal'
 import FormAlert from '@/components/ui/FormAlert'
 import Spinner from '@/components/ui/Spinner'
-import { FIELDS } from '@/constants/fields'
+import { dict } from '@/constants/dict'
 
-// Маппинг: метка колонки Excel → поле ItemRow (метки берём из FIELDS)
+// Маппинг: метка колонки Excel → поле ItemRow (метки берём из dict)
 const COLUMN_MAP: Record<string, keyof ItemRow> = {
-  [FIELDS.good_id.short]: 'good_id',
-  [FIELDS.qnt.short]:     'qnt',
+  [dict('good_id', 'short')]: 'good_id',
+  [dict('qnt', 'short')]:     'qnt',
 }
 
 function downloadTemplate() {
@@ -139,7 +139,7 @@ export default function CreateGoodsSupplyTask({ isOpen, onClose }: Props) {
     }
 
     if (colIndex.good_id === undefined || colIndex.qnt === undefined) {
-      setAlert({ type: 'error', message: `Не найдены колонки «${FIELDS.good_id.short}» и «${FIELDS.qnt.short}»` })
+      setAlert({ type: 'error', message: `Не найдены колонки «${dict('good_id', 'short')}» и «${dict('qnt', 'short')}»` })
       return
     }
 
@@ -249,7 +249,7 @@ export default function CreateGoodsSupplyTask({ isOpen, onClose }: Props) {
         <div className="space-y-4 shrink-0">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              {FIELDS.indoc_id.label} <span className="text-red-500">*</span>
+              {dict('indoc_id')} <span className="text-red-500">*</span>
             </label>
             <input
               className="input"
@@ -261,7 +261,7 @@ export default function CreateGoodsSupplyTask({ isOpen, onClose }: Props) {
             <p className="mt-1 text-xs text-gray-400">Уникальный номер в вашей системе</p>
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">{FIELDS.indoc_txt.label}</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">{dict('indoc_txt')}</label>
             <input
               className="input"
               value={indocTxt}
@@ -296,9 +296,9 @@ export default function CreateGoodsSupplyTask({ isOpen, onClose }: Props) {
           </div>
 
           <div className="grid grid-cols-[2fr_3fr_1fr_auto] gap-2 mb-1 pr-7 shrink-0">
-            <span className="text-xs text-gray-500">{FIELDS.good_id.short}</span>
-            <span className="text-xs text-gray-500">{FIELDS.good_name.short}</span>
-            <span className="text-xs text-gray-500">{FIELDS.qnt.short}</span>
+            <span className="text-xs text-gray-500">{dict('good_id', 'short')}</span>
+            <span className="text-xs text-gray-500">{dict('good_name', 'short')}</span>
+            <span className="text-xs text-gray-500">{dict('qnt', 'short')}</span>
             <span />
           </div>
 

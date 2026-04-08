@@ -9,7 +9,8 @@ import Spinner from '@/components/ui/Spinner'
 import EmptyState from '@/components/ui/EmptyState'
 import JsonViewer from '@/components/ui/JsonViewer'
 import type { IndocListItem, IndocJson } from '@/types/indoc'
-import { FIELDS } from '@/constants/fields'
+import { dict } from '@/constants/dict'
+import Hint from '@/components/ui/Hint'
 
 // ─── Вкладки ────────────────────────────────────────────────────────────────
 
@@ -57,14 +58,14 @@ function GoodsTab({ indoc }: { indoc: IndocJson }) {
       <table className="min-w-full divide-y divide-gray-200 text-sm">
         <thead className="bg-gray-50">
           <tr>
-            <th className="th">{FIELDS.good_id.short}</th>
-            <th className="th">{FIELDS.good_name.short}</th>
-            <th className="th text-right">{FIELDS.plan_qnt.short}</th>
+            <th className="th"><Hint text={dict('good_id', 'hint')}>{dict('good_id', 'short')}</Hint></th>
+            <th className="th"><Hint text={dict('good_name', 'hint')}>{dict('good_name', 'short')}</Hint></th>
+            <th className="th text-right"><Hint text={dict('plan_qnt', 'hint')}>{dict('plan_qnt', 'short')}</Hint></th>
             {indoc.indoc_type === 'goods_shipment_task' && (
-              <th className="th text-right">{FIELDS.price.short}</th>
+              <th className="th text-right"><Hint text={dict('price', 'hint')}>{dict('price', 'short')}</Hint></th>
             )}
             {indoc.indoc_type === 'goods_supply_task' && (
-              <th className="th">{FIELDS.sn_mandant.short}</th>
+              <th className="th"><Hint text={dict('sn_mandant', 'hint')}>{dict('sn_mandant', 'short')}</Hint></th>
             )}
           </tr>
         </thead>
@@ -107,11 +108,11 @@ function OrdersTab({ indoc }: { indoc: IndocJson }) {
       <table className="min-w-full divide-y divide-gray-200 text-sm">
         <thead className="bg-gray-50">
           <tr>
-            <th className="th">{FIELDS.order_id.short}</th>
-            <th className="th">{FIELDS.origin.short}</th>
+            <th className="th"><Hint text={dict('order_id', 'hint')}>{dict('order_id', 'short')}</Hint></th>
+            <th className="th"><Hint text={dict('origin', 'hint')}>{dict('origin', 'short')}</Hint></th>
             <th className="th">Получатель</th>
             <th className="th">Адрес</th>
-            <th className="th text-right">{FIELDS.good_name.short}</th>
+            <th className="th text-right">{dict('good_name', 'short')}</th>
           </tr>
         </thead>
         <tbody className="bg-white divide-y divide-gray-100">

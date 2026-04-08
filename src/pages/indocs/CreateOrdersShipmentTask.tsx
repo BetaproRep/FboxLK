@@ -8,7 +8,7 @@ import type { ParseError } from '@/utils/orderTemplateParser'
 import Modal from '@/components/ui/Modal'
 import FormAlert from '@/components/ui/FormAlert'
 import Spinner from '@/components/ui/Spinner'
-import { FIELDS } from '@/constants/fields'
+import { dict } from '@/constants/dict'
 import { parseOrderTemplate } from '@/utils/orderTemplateParser'
 
 
@@ -165,7 +165,7 @@ export default function CreateOrdersShipmentTask({ isOpen, onClose }: Props) {
           <div className="space-y-4 shrink-0">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                {FIELDS.indoc_id.label} <span className="text-red-500">*</span>
+                {dict('indoc_id')} <span className="text-red-500">*</span>
               </label>
               <input
                 className="input"
@@ -177,7 +177,7 @@ export default function CreateOrdersShipmentTask({ isOpen, onClose }: Props) {
               <p className="mt-1 text-xs text-gray-400">Уникальный номер в вашей системе</p>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">{FIELDS.indoc_txt.label}</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">{dict('indoc_txt')}</label>
               <input
                 className="input"
                 value={indocTxt}
@@ -226,8 +226,8 @@ export default function CreateOrdersShipmentTask({ isOpen, onClose }: Props) {
             ) : (
               <>
                 <div className="grid grid-cols-[2fr_1fr_2fr_auto_auto] gap-x-2 mb-1 px-2 shrink-0">
-                  <span className="text-xs text-gray-500">{FIELDS.order_id.label}</span>
-                  <span className="text-xs text-gray-500">{FIELDS.delivery_id.label}</span>
+                  <span className="text-xs text-gray-500">{dict('order_id')}</span>
+                  <span className="text-xs text-gray-500">{dict('delivery_id')}</span>
                   <span className="text-xs text-gray-500">Клиент</span>
                   <span />
                   <span />

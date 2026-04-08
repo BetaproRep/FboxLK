@@ -7,7 +7,8 @@ import PageHeader from '@/components/ui/PageHeader'
 import DateRangeFilter from '@/components/ui/DateRangeFilter'
 import EmptyState from '@/components/ui/EmptyState'
 import Spinner from '@/components/ui/Spinner'
-import { FIELDS } from '@/constants/fields'
+import { dict } from '@/constants/dict'
+import Hint from '@/components/ui/Hint'
 
 const STATE_LABELS: Record<string, string> = {
   wait: 'Ожидание',
@@ -77,11 +78,11 @@ export default function OrdersListPage() {
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
-                <th className="th">{FIELDS.order_id.short}</th>
-                <th className="th">{FIELDS.created_at.short}</th>
-                <th className="th">{FIELDS.state.short}</th>
-                <th className="th">{FIELDS.origin.short}</th>
-                <th className="th">{FIELDS.delivery_id.short}</th>
+                <th className="th"><Hint text={dict('order_id', 'hint')}>{dict('order_id', 'short')}</Hint></th>
+                <th className="th"><Hint text={dict('created_at', 'hint')}>{dict('created_at', 'short')}</Hint></th>
+                <th className="th"><Hint text={dict('state', 'hint')}>{dict('state', 'short')}</Hint></th>
+                <th className="th"><Hint text={dict('origin', 'hint')}>{dict('origin', 'short')}</Hint></th>
+                <th className="th"><Hint text={dict('delivery_id', 'hint')}>{dict('delivery_id', 'short')}</Hint></th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
