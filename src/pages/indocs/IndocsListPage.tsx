@@ -14,7 +14,13 @@ import CreateOrdersShipmentTask from './CreateOrdersShipmentTask'
 import { dict } from '@/constants/dict'
 import Hint from '@/components/ui/Hint'
 
-type SortKey = 'indoc_id' | 'indoc_type_descrip' | 'created_at' | 'indoc_txt'
+const INDOC_STATE_COLORS: Record<number, string> = {
+  1: 'bg-yellow-100 text-yellow-700',
+  2: 'bg-blue-100 text-blue-700',
+  3: 'bg-green-100 text-green-700',
+}
+
+type SortKey = 'indoc_id' | 'indoc_type_descrip' | 'created_at' | 'indoc_txt' | 'indoc_state'
 type SortDir = 'asc' | 'desc'
 
 type ClipboardRow = { rowNum: number; indoc_id: string; note: string }
@@ -84,6 +90,7 @@ export default function IndocsListPage() {
   const [showCreateOrdersShipment, setShowCreateOrdersShipment] = useState(false)
   const [indocType, setIndocType] = useState(() => sessionStorage.getItem('indocs_indoc_type') ?? '')
   const [search, setSearch] = useState(() => sessionStorage.getItem('indocs_search') ?? '')
+  const [notCompletedOnly, setNotCompletedOnly] = useState(false)
   const [sortKey, setSortKey] = useState<SortKey>('created_at')
   const [sortDir, setSortDir] = useState<SortDir>('desc')
   const [clipboardError, setClipboardError] = useState<string | null>(null)
@@ -135,6 +142,7 @@ export default function IndocsListPage() {
       return
     }
     setClipboardError(null)
+    setNotCompletedOnly(false)
     updateClipboardRows(rows)
     setAllItems([])
     setPageToken(undefined)
@@ -146,22 +154,32 @@ export default function IndocsListPage() {
     setPageToken(undefined)
   }
 
+  function enterNotCompletedOnly() {
+    setNotCompletedOnly(true)
+    updateClipboardRows(null)
+    setAllItems([])
+    setPageToken(undefined)
+  }
+
+  function clearNotCompletedOnly() {
+    setNotCompletedOnly(false)
+    setAllItems([])
+    setPageToken(undefined)
+  }
+
   const clipboardIds = clipboardRows?.map((r) => r.indoc_id)
 
   const { data, isLoading, isFetching } = useQuery({
     queryKey: clipboardRows
       ? ['indocs', 'clipboard', clipboardIds]
+      : notCompletedOnly
+      ? ['indocs', 'not_completed', indocType, pageToken]
       : ['indocs', dateFrom, dateTo, indocType, pageToken],
     queryFn: clipboardRows
       ? () => indocsApi.webList({ indoc_ids: clipboardIds })
-      : () =>
-          indocsApi.webList({
-            from_date: dateFrom,
-            to_date: dateTo,
-            indoc_type: indocType || undefined,
-            page_size: 50,
-            page_token: pageToken,
-          }),
+      : notCompletedOnly
+      ? () => indocsApi.webList({ not_completed_only: true, indoc_type: indocType || undefined, page_size: 50, page_token: pageToken })
+      : () => indocsApi.webList({ from_date: dateFrom, to_date: dateTo, indoc_type: indocType || undefined, page_size: 50, page_token: pageToken }),
   })
 
   useEffect(() => {
@@ -201,7 +219,7 @@ export default function IndocsListPage() {
     const q = search.trim().toLowerCase()
     const filtered = q
       ? allItems.filter((item) =>
-          [item.indoc_id, item.indoc_type_descrip, item.created_at, item.indoc_txt].some(
+          [item.indoc_id, item.indoc_type_descrip, item.created_at, item.indoc_txt, item.indoc_state_descrip].some(
             (v) => v != null && String(v).toLowerCase().includes(q),
           ),
         )
@@ -209,7 +227,9 @@ export default function IndocsListPage() {
     return [...filtered].sort((a, b) => {
       const av = a[sortKey] ?? ''
       const bv = b[sortKey] ?? ''
-      const cmp = String(av).localeCompare(String(bv))
+      const cmp = typeof av === 'number' && typeof bv === 'number'
+        ? av - bv
+        : String(av).localeCompare(String(bv))
       return sortDir === 'asc' ? cmp : -cmp
     })
   }, [clipboardRows, allItems, search, sortKey, sortDir])
@@ -269,6 +289,7 @@ export default function IndocsListPage() {
       />
 
       <div className="card p-4 mb-6 flex flex-wrap items-center gap-4">
+        {/* Clipboard: badge или кнопка */}
         {clipboardRows ? (
           <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-primary-100 text-primary-700 text-sm font-medium">
             Список: {clipboardRows.length} документов
@@ -299,25 +320,49 @@ export default function IndocsListPage() {
           </div>
         )}
 
-        <DateRangeFilter
-          dateFrom={dateFrom}
-          dateTo={dateTo}
-          onDateFromChange={(v) => { setDateFrom(v); sessionStorage.setItem('indocs_date_from', v); handleFilterChange() }}
-          onDateToChange={(v) => { setDateTo(v); sessionStorage.setItem('indocs_date_to', v); handleFilterChange() }}
-          disabled={!!clipboardRows}
-        />
-        <select
-          className="input w-64"
-          value={indocType}
-          onChange={(e) => { setIndocType(e.target.value); sessionStorage.setItem('indocs_indoc_type', e.target.value); handleFilterChange() }}
-          disabled={!!clipboardRows}
-        >
-          <option value="">Все типы</option>
-          <option value="goods_supply_task">Оприходование товаров</option>
-          <option value="goods_shipment_task">Отгрузка товаров</option>
-          <option value="orders_shipment_task">Отгрузка заказов</option>
-          <option value="goods_from_long_storage_task">Возврат с длительного хранения</option>
-        </select>
+        {/* Незавершённые: badge или кнопка */}
+        {notCompletedOnly ? (
+          <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-orange-100 text-orange-700 text-sm font-medium">
+            Незавершённые документы
+            <button
+              className="ml-1 text-orange-500 hover:text-orange-800 leading-none"
+              onClick={clearNotCompletedOnly}
+              title="Сбросить"
+            >
+              ×
+            </button>
+          </span>
+        ) : (
+          <button className="btn-secondary" onClick={enterNotCompletedOnly}>
+            Незавершённые документы
+          </button>
+        )}
+
+        {/* Даты: только в обычном режиме */}
+        {!clipboardRows && !notCompletedOnly && (
+          <DateRangeFilter
+            dateFrom={dateFrom}
+            dateTo={dateTo}
+            onDateFromChange={(v) => { setDateFrom(v); sessionStorage.setItem('indocs_date_from', v); handleFilterChange() }}
+            onDateToChange={(v) => { setDateTo(v); sessionStorage.setItem('indocs_date_to', v); handleFilterChange() }}
+          />
+        )}
+
+        {/* Тип документа: скрыт только в clipboard режиме */}
+        {!clipboardRows && (
+          <select
+            className="input w-64"
+            value={indocType}
+            onChange={(e) => { setIndocType(e.target.value); sessionStorage.setItem('indocs_indoc_type', e.target.value); handleFilterChange() }}
+          >
+            <option value="">Все типы</option>
+            <option value="goods_supply_task">Оприходование товаров</option>
+            <option value="goods_shipment_task">Отгрузка товаров</option>
+            <option value="orders_shipment_task">Отгрузка заказов</option>
+            <option value="goods_from_long_storage_task">Возврат с длительного хранения</option>
+          </select>
+        )}
+
         <input
           className="input w-56"
           placeholder="Поиск по списку..."
@@ -348,6 +393,7 @@ export default function IndocsListPage() {
               <tr>
                 <th className="th w-12">#</th>
                 <th className="th"><Hint text={dict('created_at', 'hint')}>{dict('created_at', 'short')}</Hint></th>
+                <th className="th"><Hint text={dict('indoc_state', 'hint')}>{dict('indoc_state', 'short')}</Hint></th>
                 <th className="th"><Hint text={dict('indoc_id', 'hint')}>{dict('indoc_id', 'short')}</Hint></th>
                 <th className="th">2-я колонка буфера</th>
                 <th className="th"><Hint text={dict('indoc_type_descrip', 'hint')}>{dict('indoc_type_descrip', 'short')}</Hint></th>
@@ -364,22 +410,31 @@ export default function IndocsListPage() {
                   <tr className="group-hover:bg-gray-50 transition-colors">
                     <td className="td text-gray-400 text-xs">{row.rowNum}</td>
                     <td className="td text-gray-500">{new Date(row.item.created_at).toLocaleString()}</td>
+                    <td className="td">
+                      {row.item.indoc_state_descrip && (
+                        <span className={`badge ${INDOC_STATE_COLORS[row.item.indoc_state!] ?? 'bg-gray-100 text-gray-600'}`}>
+                          {row.item.indoc_state_descrip}
+                        </span>
+                      )}
+                    </td>
                     <td className="td font-medium text-primary-600">{row.item.indoc_id}</td>
                     <td className="td text-gray-500 max-w-xs truncate">{row.note || '—'}</td>
                     <td className="td text-gray-500">{row.item.indoc_type_descrip}</td>
                     <td className="td text-gray-500 max-w-xs truncate">{row.item.indoc_txt ?? '—'}</td>
                   </tr>
-                  <OutdocsRow outdocs={row.item.outdocs} colSpan={6} navigate={navigate} />
+                  <OutdocsRow outdocs={row.item.outdocs} colSpan={7} navigate={navigate} />
                 </tbody>
               ) : (
                 <tbody key={row.rowNum} className="border-t border-gray-200 bg-red-50">
                   <tr>
                     <td className="td text-gray-400 text-xs">{row.rowNum}</td>
+                    <td className="td text-gray-400">—</td>
+                    <td className="td">
+                      <span className="badge bg-red-100 text-red-600">Не найден</span>
+                    </td>
                     <td className="td font-medium text-gray-500">{row.indoc_id}</td>
                     <td className="td text-gray-500 max-w-xs truncate">{row.note || '—'}</td>
-                    <td className="td text-red-400 italic" colSpan={3}>
-                      Документ не найден
-                    </td>
+                    <td className="td" colSpan={2} />
                   </tr>
                 </tbody>
               ),
@@ -390,17 +445,19 @@ export default function IndocsListPage() {
           <table className="min-w-full border-collapse">
             <thead className="bg-gray-50">
               <tr>
-                {(
-                  ['created_at', 'indoc_id', 'indoc_type_descrip', 'indoc_txt'] as SortKey[]
-                ).map((key) => (
-                  <th
-                    key={key}
-                    className="th cursor-pointer select-none hover:bg-gray-100"
-                    onClick={() => handleSort(key)}
-                  >
-                    <Hint text={dict(key, 'hint')}>
-                      <span>{dict(key, 'short')}</span>
-                    </Hint>
+                {(['created_at'] as SortKey[]).map((key) => (
+                  <th key={key} className="th cursor-pointer select-none hover:bg-gray-100" onClick={() => handleSort(key)}>
+                    <Hint text={dict(key, 'hint')}><span>{dict(key, 'short')}</span></Hint>
+                    <SortIcon active={sortKey === key} dir={sortDir} />
+                  </th>
+                ))}
+                <th className="th cursor-pointer select-none hover:bg-gray-100" onClick={() => handleSort('indoc_state')}>
+                  <Hint text={dict('indoc_state', 'hint')}><span>{dict('indoc_state', 'short')}</span></Hint>
+                  <SortIcon active={sortKey === 'indoc_state'} dir={sortDir} />
+                </th>
+                {(['indoc_id', 'indoc_type_descrip', 'indoc_txt'] as SortKey[]).map((key) => (
+                  <th key={key} className="th cursor-pointer select-none hover:bg-gray-100" onClick={() => handleSort(key)}>
+                    <Hint text={dict(key, 'hint')}><span>{dict(key, 'short')}</span></Hint>
                     <SortIcon active={sortKey === key} dir={sortDir} />
                   </th>
                 ))}
@@ -414,11 +471,18 @@ export default function IndocsListPage() {
               >
                 <tr className="group-hover:bg-gray-50 transition-colors">
                   <td className="td text-gray-500">{new Date(item.created_at).toLocaleString()}</td>
+                  <td className="td">
+                    {item.indoc_state_descrip && (
+                      <span className={`badge ${INDOC_STATE_COLORS[item.indoc_state!] ?? 'bg-gray-100 text-gray-600'}`}>
+                        {item.indoc_state_descrip}
+                      </span>
+                    )}
+                  </td>
                   <td className="td font-medium text-primary-600">{item.indoc_id}</td>
                   <td className="td text-gray-500">{item.indoc_type_descrip}</td>
                   <td className="td text-gray-500 max-w-xs truncate">{item.indoc_txt ?? '—'}</td>
                 </tr>
-                <OutdocsRow outdocs={item.outdocs} colSpan={4} navigate={navigate} />
+                <OutdocsRow outdocs={item.outdocs} colSpan={5} navigate={navigate} />
               </tbody>
             ))}
           </table>

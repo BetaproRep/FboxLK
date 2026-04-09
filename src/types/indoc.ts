@@ -27,6 +27,8 @@ export interface WebIndocListItem {
   indoc_id: string
   indoc_type: 'goods_supply_task' | 'goods_shipment_task' | 'orders_shipment_task' | 'goods_from_long_storage_task'
   indoc_type_descrip: string
+  indoc_state?: number
+  indoc_state_descrip?: string
   indoc_txt?: string
   created_at: string
   outdocs?: Array<{
@@ -44,6 +46,7 @@ export interface WebIndocListRequest {
   from_date?: string
   to_date?: string
   indoc_type?: string
+  not_completed_only?: boolean
   page_size?: number
   page_token?: string
 }
