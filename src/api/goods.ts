@@ -9,7 +9,7 @@ import type {
 
 export const goodsApi = {
   list: async (params: GoodListRequest): Promise<GoodListResponse> => {
-    const { data } = await apiClient.post('/goods/list', params)
+    const { data } = await apiClient.post('/web/goods/list', params)
     return data
   },
 

@@ -1,6 +1,7 @@
 export interface GoodListItem {
   good_id: string
   good_type: string
+  good_type_name: string
   good_name: string
   length?: number
   width?: number
@@ -59,6 +60,7 @@ export interface GoodMovement {
 export interface GoodListRequest {
   good_type?: string
   good_ids?: string[]
+  good_name_like?: string
   page_size?: number
   page_token?: string
 }

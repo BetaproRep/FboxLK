@@ -1,12 +1,23 @@
 export type OrderState = 'wait' | 'canceled' | 'inwork' | 'shipped'
 export type OrderOrigin = 'OZON' | 'WB' | 'YANDEX' | 'LAMODA' | string
 
+export interface OrderOutdocItem {
+  outdoc_id: number
+  outdoc_type: string
+  outdoc_type_descrip: string
+  created_at: string
+}
+
 export interface OrderListItem {
   order_id: string
   created_at: string
+  indoc_id?: string
   delivery_id: number
+  delivery_name?: string
+  clnt_name?: string
   state: OrderState
   origin?: OrderOrigin
+  outdocs?: OrderOutdocItem[]
 }
 
 export interface OrderDetail {
@@ -70,6 +81,8 @@ export interface OrderCreateResponse {
 export interface OrderListRequest {
   from_date?: string
   to_date?: string
+  not_completed_only?: boolean
+  order_ids?: string[]
   page_size?: number
   page_token?: string
 }

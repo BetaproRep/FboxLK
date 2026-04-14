@@ -1,3 +1,23 @@
+## 2026-04-14 — Список заказов
+
+Q: Для страницы OrdersListPage разработан новый метод /web/orders/list. Замени старый эндпоинт, добавь поле delivery_name вместо delivery_id и список outdocs по аналогии с IndocsListPage.
+A: Я переключил `ordersApi.list` на `/web/orders/list`, добавил `OrderOutdocItem`, расширил `OrderListItem` полями `delivery_name`, `indoc_id`, `outdocs`. Реализовал компонент `OutdocsRow` под каждой строкой таблицы, заменил колонку `delivery_id` на `delivery_name`.
+
+Q: Добавь кнопку "Незавершённые заказы" и режим "По списку заказов из буфера" по аналогии с IndocsListPage.
+A: Я добавил параметры `not_completed_only` и `order_ids` в `OrderListRequest`. В странице реализовал три режима запроса (clipboard/notCompleted/обычный), badge/кнопку для каждого режима, clipboard-таблицу с отображением ненайденных заказов строками «Не найден» на красном фоне, сохранение состояния в `sessionStorage`.
+
+Q: Добавь сортировку по колонкам.
+A: Я добавил `SortKey`, `SortDir`, `handleSort`, массив `SORT_COLS` для генерации заголовков и `useMemo` с сортировкой `sortedItems`. Сортировка работает в обычном и notCompleted режимах, в clipboard-режиме отключена.
+
+Q: Убери origin из табличной части и везде.
+A: Я удалил `origin` из `SortKey`, `SORT_COLS`, обоих фильтров локального поиска, заголовков и ячеек обеих таблиц, скорректировал `colSpan` во всех местах.
+
+Q: Добавь поле clnt_name в табличную часть после order_id.
+A: Я добавил `clnt_name?: string` в `OrderListItem`, запись в `dict.ts`, включил поле в `SortKey` и `SORT_COLS`, добавил ячейки в обе таблицы (нормальный и clipboard режимы), скорректировал `colSpan`.
+
+Q: Сделай кнопку "Экспорт в Excel".
+A: Я добавил импорт `xlsx`, функцию `exportToExcel` с двумя ветками (clipboard экспортирует `mergedRows` с `#` и «2-я колонка буфера»; обычный — `sortedItems`), кнопку в панели фильтров, деактивированную при пустом списке.
+
 ## 2026-04-05 — DSL парсер
 
 Q: Создай интерфейс для request body метода post /orders

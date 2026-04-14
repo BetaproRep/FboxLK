@@ -3,7 +3,7 @@ import type { OrderListRequest, OrderListResponse } from '@/types/order'
 
 export const ordersApi = {
   list: async (params: OrderListRequest): Promise<OrderListResponse> => {
-    const { data } = await apiClient.post('/orders/list', params)
+    const { data } = await apiClient.post('/web/orders/list', params)
     return data
   },
 

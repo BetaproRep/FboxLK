@@ -7,6 +7,7 @@ interface UiDef {
 type UiMap = Record<string, UiDef>
 
 const common = {
+  clnt_name:              { label: 'ФИО клиента',                      hint: 'ФИО клиента (получателя заказа)'                              },
   good_id:              { label: 'Артикул',                    short: 'Артикул',          hint: 'Артикул товара в вашей системе учёта'                              },
   good_name:            { label: 'Название товара',            short: 'Название',         hint: 'Наименование товара на складе'                                     },
   good_type:            { label: 'Тип товара',                 short: 'Тип',              hint: 'Категория или тип товара'                                          },
