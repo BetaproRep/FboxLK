@@ -13,6 +13,7 @@ import CreateGoodsShipmentTask from './CreateGoodsShipmentTask'
 import CreateOrdersShipmentTask from './CreateOrdersShipmentTask'
 import { dict } from '@/constants/dict'
 import Hint from '@/components/ui/Hint'
+import SortIcon from '@/components/ui/SortIcon'
 
 const INDOC_STATE_COLORS: Record<number, string> = {
   1: 'bg-yellow-100 text-yellow-700',
@@ -25,14 +26,6 @@ type SortDir = 'asc' | 'desc'
 
 type ClipboardRow = { rowNum: number; indoc_id: string; note: string }
 type MergedRow = ClipboardRow & { item: WebIndocListItem | null }
-
-function SortIcon({ active, dir }: { active: boolean; dir: SortDir }) {
-  return (
-    <span className={`ml-1 inline-block text-xs ${active ? 'text-primary-600' : 'text-gray-300'}`}>
-      {active && dir === 'desc' ? '▼' : '▲'}
-    </span>
-  )
-}
 
 function defaultDateFrom() {
   const d = new Date()

@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useMutation } from '@tanstack/react-query'
+import * as XLSX from 'xlsx'
 import { outdocsApi } from '@/api/outdocs'
 import type { OutdocListItem } from '@/types/outdoc'
 import PageHeader from '@/components/ui/PageHeader'
@@ -9,15 +10,32 @@ import EmptyState from '@/components/ui/EmptyState'
 import Spinner from '@/components/ui/Spinner'
 import { dict } from '@/constants/dict'
 import Hint from '@/components/ui/Hint'
+import SortIcon from '@/components/ui/SortIcon'
 
 type SortKey = 'outdoc_id' | 'outdoc_type_descrip' | 'outdoc_date' | 'created_at' | 'outdoc_txt'
 type SortDir = 'asc' | 'desc'
 
-function SortIcon({ active, dir }: { active: boolean; dir: SortDir }) {
+function IndocRow({ indoc, colSpan, navigate }: { indoc: OutdocListItem['indoc']; colSpan: number; navigate: (path: string) => void }) {
+  if (!indoc) return null
   return (
-    <span className={`ml-1 inline-block text-xs ${active ? 'text-primary-600' : 'text-gray-300'}`}>
-      {active && dir === 'desc' ? '▼' : '▲'}
-    </span>
+    <tr>
+      <td colSpan={colSpan} className="px-4 pt-0 pb-1 bg-white group-hover:bg-gray-50 transition-colors">
+        <div className="flex flex-wrap gap-x-6 gap-y-1">
+          <span className="flex items-center gap-1.5 text-xs text-gray-500">
+            <span>{new Date(indoc.created_at).toLocaleString()}</span>
+            <a
+              href={`/indocs/${indoc.indoc_id}`}
+              onClick={(e) => { e.stopPropagation(); e.preventDefault(); navigate(`/indocs/${indoc.indoc_id}`) }}
+              className="text-primary-600 font-medium hover:underline"
+            >
+              {indoc.indoc_id}
+            </a>
+            <span>{indoc.indoc_type_descrip}</span>
+            {indoc.indoc_txt && <span>{indoc.indoc_txt}</span>}
+          </span>
+        </div>
+      </td>
+    </tr>
   )
 }
 
@@ -28,40 +46,37 @@ function defaultDateFrom() {
 }
 
 const OUTDOC_TYPES: [string, string][] = [
-  // Товары
+  ['goods_supply_start', 'Начата приемка товаров по заданию на оприходование'],
   ['goods_supply', 'Товары оприходованы'],
-  ['goods_supply_start', 'Начата приемка товаров (опц.)'],
+  ['goods_shipment_start', 'Начат подбор товаров по заданию на отгрузку'],
+  ['goods_shipment_ready', 'Подобран товар для отгрузки'],
   ['goods_shipment', 'Товары отгружены'],
-  ['goods_shipment_start', 'Начат подбор товаров (опц.)'],
-  ['goods_shipment_ready', 'Товар подобран для отгрузки (опц.)'],
   ['goods_correction', 'Инвентаризация-коррекция'],
-  ['goods_to_long_storage', 'Товары перемещены на длительное хранение'],
-  ['goods_from_long_storage', 'Возврат товаров с длительного хранения'],
-  // Заказы
-  ['orders_receiving', 'Получены заказы (опц.)'],
-  ['orders_deficit', 'Заказы не обеспечены товарами (опц.)'],
-  ['orders_production_start', 'Заказы переданы в производство (опц.)'],
-  ['orders_pallet', 'Заказы спаллетированы (опц.)'],
+  ['goods_to_long_storage', 'Товары пееремещены на склад длительного хранения'],
+  ['goods_from_long_storage', 'Возврат товаров со склада длительного хранения'],
+  ['orders_receiving', 'Получены заказы'],
+  ['orders_production_start', 'Заказы переданы в производство'],
+  ['orders_pallet', 'Заказы спаллетированы'],
   ['orders_shipment', 'Заказы отгружены в службу доставки'],
-  ['orders_shipment_refusal', 'Отказ СД в приеме заказов'],
+  ['orders_deficit', 'Заказы не обеспечены товарами'],
   ['orders_cancel', 'Заказы аннулированы'],
   ['orders_full_return', 'Полный возврат заказов'],
   ['orders_part_return', 'Частичный возврат заказов'],
   ['orders_client_return', 'Клиентский возврат заказов'],
   ['orders_payment', 'Оплата заказов'],
   ['orders_payment_transfer', 'Перечисление наложенного платежа'],
-  // Консолидация
+  ['orders_shipment_refusal', 'Отказ службы доставки в приеме заказов'],
   ['exorders_supply', 'Приняты отправления для консолидации'],
 ]
 
 export default function OutdocsListPage() {
   const navigate = useNavigate()
-  const [dateFrom, setDateFrom] = useState(defaultDateFrom())
-  const [dateTo, setDateTo] = useState(new Date().toISOString().slice(0, 10))
+  const [dateFrom, setDateFrom] = useState(() => sessionStorage.getItem('outdocs_date_from') ?? defaultDateFrom())
+  const [dateTo, setDateTo] = useState(() => sessionStorage.getItem('outdocs_date_to') ?? new Date().toISOString().slice(0, 10))
   const [pageToken, setPageToken] = useState<string | undefined>()
   const [allItems, setAllItems] = useState<OutdocListItem[]>([])
-  const [outdocType, setOutdocType] = useState('')
-  const [search, setSearch] = useState('')
+  const [outdocType, setOutdocType] = useState(() => sessionStorage.getItem('outdocs_outdoc_type') ?? '')
+  const [search, setSearch] = useState(() => sessionStorage.getItem('outdocs_search') ?? '')
   const [sortKey, setSortKey] = useState<SortKey>('created_at')
   const [sortDir, setSortDir] = useState<SortDir>('desc')
 
@@ -78,7 +93,7 @@ export default function OutdocsListPage() {
     const q = search.trim().toLowerCase()
     const filtered = q
       ? allItems.filter((item) =>
-          [item.outdoc_id, item.outdoc_type_descrip, item.outdoc_date, item.created_at, item.outdoc_txt]
+          [item.outdoc_id, item.outdoc_type_descrip, item.outdoc_date, item.created_at, item.outdoc_txt, item.indoc?.indoc_id, item.indoc?.indoc_txt]
             .some((v) => v != null && String(v).toLowerCase().includes(q))
         )
       : allItems
@@ -108,6 +123,37 @@ export default function OutdocsListPage() {
     setAllItems((prev) => (pageToken ? [...prev, ...items] : items))
   }, [data]) // eslint-disable-line react-hooks/exhaustive-deps
 
+  const lockMutation = useMutation({
+    mutationFn: (params: { outdoc_id: number; lock: boolean }) =>
+      outdocsApi.lock({ outdocs: [params] }),
+    onSuccess: (_data, variables) => {
+      setAllItems((prev) =>
+        prev.map((item) =>
+          item.outdoc_id === variables.outdoc_id && item.locked !== variables.lock
+            ? { ...item, locked: variables.lock }
+            : item,
+        ),
+      )
+    },
+  })
+
+  function exportToExcel() {
+    const rows = sortedItems.map((item) => ({
+      [dict('created_at', 'short')]: new Date(item.created_at).toLocaleString(),
+      [dict('outdoc_id', 'short')]: item.outdoc_id,
+      [dict('outdoc_type_descrip', 'short')]: item.outdoc_type_descrip,
+      [dict('outdoc_date', 'short')]: new Date(item.outdoc_date).toLocaleDateString(),
+      [dict('outdoc_txt', 'short')]: item.outdoc_txt ?? '',
+      [dict('locked', 'short')]: item.locked ? 'Да' : 'Нет',
+      'Входящий документ': item.indoc?.indoc_id ?? '',
+      'Примечание входящего': item.indoc?.indoc_txt ?? '',
+    }))
+    const ws = XLSX.utils.json_to_sheet(rows)
+    const wb = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(wb, ws, 'Исходящие документы')
+    XLSX.writeFile(wb, `outdocs_${dateFrom}_${dateTo}.xlsx`)
+  }
+
   function handleFilterChange() {
     setPageToken(undefined)
     setAllItems([])
@@ -121,13 +167,13 @@ export default function OutdocsListPage() {
         <DateRangeFilter
           dateFrom={dateFrom}
           dateTo={dateTo}
-          onDateFromChange={(v) => { setDateFrom(v); handleFilterChange() }}
-          onDateToChange={(v) => { setDateTo(v); handleFilterChange() }}
+          onDateFromChange={(v) => { setDateFrom(v); sessionStorage.setItem('outdocs_date_from', v); handleFilterChange() }}
+          onDateToChange={(v) => { setDateTo(v); sessionStorage.setItem('outdocs_date_to', v); handleFilterChange() }}
         />
         <select
           className="input w-64"
           value={outdocType}
-          onChange={(e) => { setOutdocType(e.target.value); handleFilterChange() }}
+          onChange={(e) => { setOutdocType(e.target.value); sessionStorage.setItem('outdocs_outdoc_type', e.target.value); handleFilterChange() }}
         >
           <option value="">Все типы</option>
           {OUTDOC_TYPES.map(([value, label]) => (
@@ -138,8 +184,15 @@ export default function OutdocsListPage() {
           className="input w-56"
           placeholder="Поиск по списку..."
           value={search}
-          onChange={(e) => setSearch(e.target.value)}
+          onChange={(e) => { setSearch(e.target.value); sessionStorage.setItem('outdocs_search', e.target.value) }}
         />
+        <button
+          className="btn-secondary"
+          onClick={exportToExcel}
+          disabled={sortedItems.length === 0}
+        >
+          Экспорт в Excel
+        </button>
       </div>
 
       <div className="card overflow-hidden">
@@ -150,12 +203,12 @@ export default function OutdocsListPage() {
         ) : allItems.length === 0 ? (
           <EmptyState title="Документы не найдены" description="Измените период фильтрации" />
         ) : (
-          <table className="min-w-full divide-y divide-gray-200">
+          <table className="min-w-full border-collapse">
             <thead className="bg-gray-50">
               <tr>
                 {(
                   [
-                    'outdoc_id', 'outdoc_type_descrip', 'outdoc_date', 'created_at', 'outdoc_txt',
+                    'created_at', 'outdoc_id', 'outdoc_type_descrip', 'outdoc_date', 'outdoc_txt',
                   ] as SortKey[]
                 ).map((key) => (
                   <th
@@ -172,27 +225,30 @@ export default function OutdocsListPage() {
                 <th className="th"><Hint text={dict('locked', 'hint')}>{dict('locked', 'short')}</Hint></th>
               </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {sortedItems.map((item) => (
-                <tr
-                  key={item.outdoc_id}
-                  className="hover:bg-gray-50 cursor-pointer transition-colors"
-                  onClick={() => navigate(`/outdocs/${item.outdoc_id}`)}
-                >
+            {sortedItems.map((item) => (
+              <tbody
+                key={item.outdoc_id}
+                className="border-t border-gray-200 group cursor-pointer"
+                onClick={() => navigate(`/outdocs/${item.outdoc_id}`)}
+              >
+                <tr className="group-hover:bg-gray-50 transition-colors">
+                  <td className="td text-gray-500">{new Date(item.created_at).toLocaleString()}</td>
                   <td className="td font-medium text-primary-600">{item.outdoc_id}</td>
                   <td className="td text-gray-500">{item.outdoc_type_descrip}</td>
                   <td className="td text-gray-500">{new Date(item.outdoc_date).toLocaleDateString()}</td>
-                  <td className="td text-gray-500">{new Date(item.created_at).toLocaleString()}</td>
                   <td className="td text-gray-500 max-w-xs truncate">{item.outdoc_txt ?? '—'}</td>
-                  <td className="td">
-                    {item.locked
-                      ? <span className="badge bg-orange-100 text-orange-700">Заблокирован</span>
-                      : <span className="badge bg-gray-100 text-gray-500">Нет</span>
-                    }
+                  <td className="td text-center" onClick={(e) => e.stopPropagation()}>
+                    <input
+                      type="checkbox"
+                      checked={item.locked}
+                      onChange={(e) => lockMutation.mutate({ outdoc_id: item.outdoc_id, lock: e.target.checked })}
+                      className="w-4 h-4 cursor-pointer accent-primary-600"
+                    />
                   </td>
                 </tr>
-              ))}
-            </tbody>
+                <IndocRow indoc={item.indoc} colSpan={6} navigate={navigate} />
+              </tbody>
+            ))}
           </table>
         )}
 

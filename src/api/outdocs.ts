@@ -10,7 +10,7 @@ import type {
 
 export const outdocsApi = {
   list: async (params: OutdocListRequest): Promise<OutdocListResponse> => {
-    const { data } = await apiClient.post('/outdocs/list', params)
+    const { data } = await apiClient.post('/web/outdocs/list', params)
     return data
   },
 
@@ -64,8 +64,8 @@ export const outdocsApi = {
     return data
   },
 
-  lock: async (outdocIds: number[]) => {
-    const { data } = await apiClient.post('/outdocs/lock', { outdoc_ids: outdocIds })
+  lock: async (params: { outdocs: { outdoc_id: number; lock?: boolean }[] }) => {
+    const { data } = await apiClient.post('/outdocs/lock', params)
     return data
   },
 

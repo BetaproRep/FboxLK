@@ -16,7 +16,13 @@ export interface OutdocListItem {
   created_at: string
   locked: boolean
   unlock_request: boolean
-  indoc_id?: string
+  indoc?: {
+    indoc_id: string
+    created_at: string
+    indoc_type: string
+    indoc_type_descrip: string
+    indoc_txt?: string
+  }
   part_num?: number
   origin?: string
 }
