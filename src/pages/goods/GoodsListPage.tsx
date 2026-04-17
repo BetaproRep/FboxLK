@@ -349,7 +349,7 @@ export default function GoodsListPage() {
                   <tr
                     key={row.rowNum}
                     className="hover:bg-gray-50 cursor-pointer transition-colors"
-                    onClick={() => navigate(`/goods/${row.item!.good_id}`)}
+                    onClick={() => navigate(`/goods/${encodeURIComponent(row.item!.good_id)}`)}
                   >
                     <td className="td text-gray-400 text-xs">{row.rowNum}</td>
                     <td className="td font-mono text-sm text-primary-600">{row.item.good_id}</td>
@@ -399,7 +399,7 @@ export default function GoodsListPage() {
                 <tr
                   key={item.good_id}
                   className="hover:bg-gray-50 cursor-pointer transition-colors"
-                  onClick={() => navigate(`/goods/${item.good_id}`)}
+                  onClick={() => navigate(`/goods/${encodeURIComponent(item.good_id)}`)}
                 >
                   <td className="td font-mono text-sm text-primary-600">{item.good_id}</td>
                   <td className="td font-medium">{item.good_name}</td>

@@ -5,7 +5,7 @@ import type { GoodStock } from '@/types/good'
 import PageHeader from '@/components/ui/PageHeader'
 import EmptyState from '@/components/ui/EmptyState'
 import Spinner from '@/components/ui/Spinner'
-import { dict } from '@/constants/dict'
+import { dict, dictEnum } from '@/constants/dict'
 import Hint from '@/components/ui/Hint'
 
 type Mode = 'current' | 'date' | 'expiry'
@@ -93,7 +93,7 @@ export default function GoodsStockPage() {
               {items.map((g, i) => (
                 <tr key={i} className="hover:bg-gray-50 transition-colors">
                   <td className="td font-mono text-sm">{g.good_id}</td>
-                  <td className="td text-gray-500">{g.qual_type}</td>
+                  <td className="td text-gray-500">{dictEnum('qual_type', g.qual_type)}</td>
                   <td className="td text-right font-medium text-green-700">{g.stock}</td>
                   <td className="td text-right text-orange-600">{g.quarantine}</td>
                   <td className="td text-right text-gray-500">{g.long_storage}</td>

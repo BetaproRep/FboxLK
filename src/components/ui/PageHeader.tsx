@@ -1,17 +1,17 @@
 interface Props {
   title: string
-  subtitle?: string
+  subtitle?: React.ReactNode
   actions?: React.ReactNode
 }
 
 export default function PageHeader({ title, subtitle, actions }: Props) {
   return (
-    <div className="flex items-center justify-between mb-6">
+    <div className="flex items-start justify-between mb-6">
       <div>
         <h1 className="text-2xl font-bold text-gray-900">{title}</h1>
-        {subtitle && <p className="mt-1 text-sm text-gray-500">{subtitle}</p>}
+        {subtitle && <div className="mt-1">{subtitle}</div>}
       </div>
-      {actions && <div className="flex items-center gap-3">{actions}</div>}
+      {actions && <div className="flex items-center gap-3 mt-1">{actions}</div>}
     </div>
   )
 }

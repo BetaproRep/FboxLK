@@ -5,7 +5,7 @@ import toast from 'react-hot-toast'
 import { outdocsApi } from '@/api/outdocs'
 import PageHeader from '@/components/ui/PageHeader'
 import EmptyState from '@/components/ui/EmptyState'
-import { dict } from '@/constants/dict'
+import { dict, dictEnum } from '@/constants/dict'
 import Hint from '@/components/ui/Hint'
 
 type Tab = 'goods' | 'sn' | 'files' | 'photos'
@@ -101,7 +101,7 @@ export default function OutdocDetailPage() {
                   <tr key={i}>
                     <td className="td font-mono text-sm">{g.good_id}</td>
                     <td className="td text-gray-500">{g.good_state}</td>
-                    <td className="td text-gray-500">{g.qual_type}</td>
+                    <td className="td text-gray-500">{dictEnum('qual_type', g.qual_type)}</td>
                     <td className="td text-right font-medium">{g.qnt}</td>
                   </tr>
                 ))}
@@ -131,7 +131,7 @@ export default function OutdocDetailPage() {
                   <tr key={i}>
                     <td className="td font-mono text-sm">{sn.good_sn}</td>
                     <td className="td text-gray-500 font-mono text-sm">{sn.good_id}</td>
-                    <td className="td text-gray-500">{sn.qual_type}</td>
+                    <td className="td text-gray-500">{dictEnum('qual_type', sn.qual_type)}</td>
                     <td className="td">
                       <span className={`badge ${sn.inout === 1 ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
                         {sn.inout === 1 ? 'Приход' : 'Расход'}

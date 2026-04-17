@@ -15,7 +15,7 @@ export const goodsApi = {
 
   // Возвращает { success, good: GoodDetail }
   get: async (goodId: string): Promise<{ success: boolean; good: unknown }> => {
-    const { data } = await apiClient.get(`/goods/${goodId}/info`)
+    const { data } = await apiClient.get(`/goods/${encodeURIComponent(goodId)}/info`)
     return data
   },
 

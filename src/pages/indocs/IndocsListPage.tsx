@@ -348,11 +348,10 @@ export default function IndocsListPage() {
             value={indocType}
             onChange={(e) => { setIndocType(e.target.value); sessionStorage.setItem('indocs_indoc_type', e.target.value); handleFilterChange() }}
           >
-            <option value="">Все типы</option>
-            <option value="goods_supply_task">Оприходование товаров</option>
-            <option value="goods_shipment_task">Отгрузка товаров</option>
-            <option value="orders_shipment_task">Отгрузка заказов</option>
-            <option value="goods_from_long_storage_task">Возврат с длительного хранения</option>
+            <option value="">Все типы документов</option>
+            <option value="goods_supply_task">Задание на оприходование товаров</option>
+            <option value="goods_shipment_task">Задание на отгрузку товаров</option>
+            <option value="orders_shipment_task">Задание на отгрузку заказов</option>
           </select>
         )}
 

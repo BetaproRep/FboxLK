@@ -175,7 +175,7 @@ export default function OutdocsListPage() {
           value={outdocType}
           onChange={(e) => { setOutdocType(e.target.value); sessionStorage.setItem('outdocs_outdoc_type', e.target.value); handleFilterChange() }}
         >
-          <option value="">Все типы</option>
+          <option value="">Все типы документов</option>
           {OUTDOC_TYPES.map(([value, label]) => (
             <option key={value} value={value}>{label}</option>
           ))}
