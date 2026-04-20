@@ -8,23 +8,10 @@ import PageHeader from '@/components/ui/PageHeader'
 import DateRangeFilter from '@/components/ui/DateRangeFilter'
 import EmptyState from '@/components/ui/EmptyState'
 import Spinner from '@/components/ui/Spinner'
-import { dict } from '@/constants/dict'
+import { dict, dictEnum } from '@/constants/dict'
 import Hint from '@/components/ui/Hint'
 import SortIcon from '@/components/ui/SortIcon'
-
-const STATE_LABELS: Record<string, string> = {
-  wait: 'Ожидание',
-  canceled: 'Отменён',
-  inwork: 'В работе',
-  shipped: 'Отгружен',
-}
-
-const STATE_COLORS: Record<string, string> = {
-  wait: 'bg-yellow-100 text-yellow-700',
-  canceled: 'bg-gray-100 text-gray-500',
-  inwork: 'bg-blue-100 text-blue-700',
-  shipped: 'bg-green-100 text-green-700',
-}
+import OrderStateBadge from '@/components/ui/OrderStateBadge'
 
 type SortKey = 'order_id' | 'created_at' | 'state' | 'clnt_name' | 'delivery_name'
 type SortDir = 'asc' | 'desc'
@@ -187,7 +174,15 @@ export default function OrdersListPage() {
     if (clipboardRows) {
       setAllItems(items)
     } else {
-      setAllItems((prev) => (pageToken ? [...prev, ...items] : items))
+      setAllItems((prev) => {
+        const merged = pageToken ? [...prev, ...items] : items
+        const seen = new Set<string>()
+        return merged.filter(item => {
+          if (seen.has(item.order_id)) return false
+          seen.add(item.order_id)
+          return true
+        })
+      })
     }
   }, [data]) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -241,13 +236,13 @@ export default function OrdersListPage() {
           [dict('order_id', 'short')]: r.order_id,
           '2-я колонка буфера': r.note,
           [dict('created_at', 'short')]: r.item ? new Date(r.item.created_at).toLocaleString() : '',
-          'Статус': r.item ? (STATE_LABELS[r.item.state] ?? r.item.state) : 'Не найден',
+          'Статус': r.item ? dictEnum('order_state', r.item.state) : 'Не найден',
           [dict('clnt_name', 'short')]: r.item?.clnt_name ?? '',
           [dict('delivery_name', 'short')]: r.item?.delivery_name ?? '',
         }))
       : sortedItems.map((item) => ({
           [dict('created_at', 'short')]: new Date(item.created_at).toLocaleString(),
-          'Статус': STATE_LABELS[item.state] ?? item.state,
+          'Статус': dictEnum('order_state', item.state),
           [dict('order_id', 'short')]: item.order_id,
           [dict('clnt_name', 'short')]: item.clnt_name ?? '',
           [dict('delivery_name', 'short')]: item.delivery_name ?? '',
@@ -371,7 +366,7 @@ export default function OrdersListPage() {
                 <tbody
                   key={row.rowNum}
                   className="border-t border-gray-200 group cursor-pointer"
-                  onClick={() => navigate(`/orders/${row.item!.order_id}`)}
+                  onClick={() => navigate(`/orders/${encodeURIComponent(row.item!.order_id)}`)}
                 >
                   <tr className="group-hover:bg-gray-50 transition-colors">
                     <td className="td text-gray-400 text-xs">{row.rowNum}</td>
@@ -380,9 +375,7 @@ export default function OrdersListPage() {
                     <td className="td text-gray-500 max-w-xs truncate">{row.note || '—'}</td>
                     <td className="td text-gray-500">{new Date(row.item.created_at).toLocaleString()}</td>
                     <td className="td">
-                      <span className={`badge ${STATE_COLORS[row.item.state] ?? 'bg-gray-100 text-gray-600'}`}>
-                        {STATE_LABELS[row.item.state] ?? row.item.state}
-                      </span>
+                      <OrderStateBadge state={row.item.state} />
                     </td>
                     <td className="td text-gray-500">{row.item.delivery_name ?? '—'}</td>
                   </tr>
@@ -426,14 +419,12 @@ export default function OrdersListPage() {
               <tbody
                 key={item.order_id}
                 className="border-t border-gray-200 group cursor-pointer"
-                onClick={() => navigate(`/orders/${item.order_id}`)}
+                onClick={() => navigate(`/orders/${encodeURIComponent(item.order_id)}`)}
               >
                 <tr className="group-hover:bg-gray-50 transition-colors">
                   <td className="td text-gray-500">{new Date(item.created_at).toLocaleString()}</td>
                   <td className="td">
-                    <span className={`badge ${STATE_COLORS[item.state] ?? 'bg-gray-100 text-gray-600'}`}>
-                      {STATE_LABELS[item.state] ?? item.state}
-                    </span>
+                    <OrderStateBadge state={item.state} />
                   </td>
                   <td className="td font-medium text-primary-600">{item.order_id}</td>
                   <td className="td text-gray-500">{item.clnt_name ?? '—'}</td>

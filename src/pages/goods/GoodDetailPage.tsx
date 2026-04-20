@@ -7,26 +7,15 @@ import { ordersApi } from '@/api/orders'
 import type { GoodDetail, GoodStock } from '@/types/good'
 import type { OrderListItem } from '@/types/order'
 import PageHeader from '@/components/ui/PageHeader'
+import PropList from '@/components/ui/PropList'
+import type { PropItem } from '@/components/ui/PropList'
 import EmptyState from '@/components/ui/EmptyState'
 import Spinner from '@/components/ui/Spinner'
 import DateRangeFilter from '@/components/ui/DateRangeFilter'
 import { dict, dictEnum, enumOptions, type UiKey } from '@/constants/dict'
 import Hint from '@/components/ui/Hint'
 import SortIcon from '@/components/ui/SortIcon'
-
-const STATE_LABELS: Record<string, string> = {
-  wait: 'Ожидание',
-  canceled: 'Отменён',
-  inwork: 'В работе',
-  shipped: 'Отгружен',
-}
-
-const STATE_COLORS: Record<string, string> = {
-  wait: 'bg-yellow-100 text-yellow-700',
-  canceled: 'bg-gray-100 text-gray-500',
-  inwork: 'bg-blue-100 text-blue-700',
-  shipped: 'bg-green-100 text-green-700',
-}
+import OrderStateBadge from '@/components/ui/OrderStateBadge'
 
 type OrdSortKey = 'order_id' | 'created_at' | 'state' | 'clnt_name' | 'delivery_name'
 
@@ -204,7 +193,7 @@ export default function GoodDetailPage() {
   function exportOrdToExcel() {
     const rows = ordSortedItems.map(item => ({
       [dict('created_at', 'short')]: new Date(item.created_at).toLocaleString(),
-      'Статус': STATE_LABELS[item.state] ?? item.state,
+      'Статус': dictEnum('order_state', item.state),
       [dict('order_id', 'short')]: item.order_id,
       [dict('clnt_name', 'short')]: item.clnt_name ?? '',
       [dict('delivery_name', 'short')]: item.delivery_name ?? '',
@@ -235,12 +224,12 @@ export default function GoodDetailPage() {
     ? `${good.length} × ${good.width} × ${good.height} мм`
     : null
 
-  const subtitleParts: { label: string; value: string }[] = [
-    { label: 'Артикул', value: good.good_id },
-    { label: 'Тип', value: dictEnum('good_type', good.good_type) },
-    ...(dims ? [{ label: 'Габариты', value: dims }] : []),
-    ...(good.weight != null ? [{ label: 'Вес', value: `${good.weight} гр.` }] : []),
-    ...(good.gtr_name ? [{ label: 'Типоразмер', value: good.gtr_name }] : []),
+  const propItems: PropItem[] = [
+    { dictKey: 'good_id',   value: good.good_id },
+    { dictKey: 'good_type', value: dictEnum('good_type', good.good_type) },
+    { dictKey: 'dims',      value: dims },
+    { dictKey: 'weight',    value: good.weight != null ? `${good.weight} гр.` : null },
+    { dictKey: 'gtr_name',  value: good.gtr_name },
   ]
 
   const stockItems = stockData?.items ?? []
@@ -284,14 +273,7 @@ export default function GoodDetailPage() {
         subtitle={
           <div>
             <p className="text-base font-semibold text-gray-800 mt-0.5">{good.good_name}</p>
-            <p className="text-sm text-gray-500 mt-0.5">
-              {subtitleParts.map((p, i) => (
-                <span key={p.label}>
-                  {i > 0 && <span className="mx-2 text-gray-300">·</span>}
-                  {p.label}: <span className="font-semibold text-gray-700">{p.value}</span>
-                </span>
-              ))}
-            </p>
+            <PropList items={propItems} className="text-sm text-gray-500 mt-0.5" />
           </div>
         }
       />
@@ -532,14 +514,12 @@ export default function GoodDetailPage() {
                   <tbody
                     key={`${item.order_id}-${i}`}
                     className="border-t border-gray-200 group cursor-pointer"
-                    onClick={() => navigate(`/orders/${item.order_id}`)}
+                    onClick={() => navigate(`/orders/${encodeURIComponent(item.order_id)}`)}
                   >
                     <tr className="group-hover:bg-gray-50 transition-colors">
                       <td className="td text-gray-500">{new Date(item.created_at).toLocaleString()}</td>
                       <td className="td">
-                        <span className={`badge ${STATE_COLORS[item.state] ?? 'bg-gray-100 text-gray-600'}`}>
-                          {STATE_LABELS[item.state] ?? item.state}
-                        </span>
+                        <OrderStateBadge state={item.state} />
                       </td>
                       <td className="td font-medium text-primary-600">{item.order_id}</td>
                       <td className="td text-gray-500">{item.clnt_name ?? '—'}</td>

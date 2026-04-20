@@ -44,7 +44,7 @@ apiClient.interceptors.response.use(
       toast.error('Превышен лимит запросов. Попробуйте позже.')
     } else if (status >= 500) {
       toast.error('Ошибка сервера. Попробуйте позже.')
-    } else {
+    } else if (!(error.config as Record<string, unknown>)?.skipToast) {
       toast.error(message)
     }
 

@@ -20,22 +20,67 @@ export interface OrderListItem {
   outdocs?: OrderOutdocItem[]
 }
 
+export interface OrderDetailGood {
+  good_id: string
+  good_type: string
+  good_name: string
+  qnt: number
+  declared_value: number
+  cod: number
+}
+
+export interface OrderDetailPltUnit {
+  unit_num: number
+  barcode: string
+  pack_name?: string
+  pack_weight?: number
+  weight?: number
+  length?: number
+  width?: number
+  height?: number
+}
+
+export interface OrderDetailPltGood {
+  unit_num: number
+  good_id: string
+  good_type: string
+  good_name: string
+  good_sn?: string
+  expiry_date?: string
+  declared_value: number
+  cod: number
+}
+
+export interface OrderDetailPltInfo {
+  barcode: string
+  dispatch_number?: string
+  declared_value: number
+  cod: number
+  plt_id: number
+  plt_bar: string
+  weight: number
+  unit_qnt: number
+  units?: OrderDetailPltUnit[]
+  goods?: OrderDetailPltGood[]
+}
+
 export interface OrderDetail {
   order_id?: string
   created_at?: string
   indoc_id?: string
+  indoc_txt?: string
   origin?: string
   delivery_id?: number
   delivery_name?: string
   canceled?: boolean
-  goods?: Array<{
-    good_id: string
-    qnt: number
-    price?: number
-  }>
-  outdocs?: Array<{ outdoc_id: number }>
-  photos?: Array<{ url: string }>
-  events?: Array<{ event_type: string; created_at: string }>
+  state?: OrderState
+  clnt_name?: string
+  clnt_addr?: string
+  goods?: OrderDetailGood[]
+  plt_info?: OrderDetailPltInfo
+  outdocs?: Array<{ outdoc_id: number; outdoc_type: string; outdoc_type_descrip: string; outdoc_date: string; created_at: string; locked: boolean }>
+  photos?: Array<{ photo_id: number; url: string; created_at: string; descrip?: string }>
+  events?: Array<{ event_id: number; event_date: string; event_type: number; descrip: string }>
 }
 
 // --- POST /orders request body ---
