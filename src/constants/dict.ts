@@ -7,6 +7,7 @@ interface UiDef {
 type UiMap = Record<string, UiDef>
 
 const common = {
+  attribute_id:         { label: '№ атрибута',               short: '№ атрибута',               hint: 'Идентификатор атрибута'                                            },
   attribute_name:       { label: 'Атрибут',                                              hint: 'Название дополнительного атрибута товара'                          },
   attribute_type:       { label: 'Тип атрибута',              short: 'Тип',              hint: 'Тип данных атрибута: строка, число и т.д.'                        },
   'btn.clipboard_load': { label: 'По списку из буфера',                                  hint: 'Скопируйте номер документа или список номеров из Excel в буфер обмена. Затем нажмите эту кнопку' },
@@ -73,6 +74,21 @@ const context: Record<string, Partial<UiMap>> = {
 }
 
 const enums = {
+  sn_state: {
+    not_used:   'Не используется',
+    acceptance: 'В процессе приёмки',
+    in_stock:   'Размещён на складе',
+    out_stock:  'Списан',
+  },
+  attribute_type: {
+    string:   'Строка',
+    boolean:  'Булево',
+    int:      'Целое число',
+    float:    'Число с запятой',
+    date:     'Дата',
+    datetime: 'Дата и время',
+    json:     'JSON',
+  },
   good_state: {
     stock:        'Складской остаток',
     quarantine:   'Карантин',

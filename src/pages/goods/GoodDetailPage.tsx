@@ -1,9 +1,11 @@
-import { useState, useMemo } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import * as XLSX from 'xlsx'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { goodsApi } from '@/api/goods'
+import { ordersApi } from '@/api/orders'
 import type { GoodDetail, GoodStock } from '@/types/good'
+import type { OrderListItem } from '@/types/order'
 import PageHeader from '@/components/ui/PageHeader'
 import EmptyState from '@/components/ui/EmptyState'
 import Spinner from '@/components/ui/Spinner'
@@ -12,7 +14,52 @@ import { dict, dictEnum, enumOptions, type UiKey } from '@/constants/dict'
 import Hint from '@/components/ui/Hint'
 import SortIcon from '@/components/ui/SortIcon'
 
-type Tab = 'info' | 'movements' | 'eans' | 'photos' | 'sn'
+const STATE_LABELS: Record<string, string> = {
+  wait: 'Ожидание',
+  canceled: 'Отменён',
+  inwork: 'В работе',
+  shipped: 'Отгружен',
+}
+
+const STATE_COLORS: Record<string, string> = {
+  wait: 'bg-yellow-100 text-yellow-700',
+  canceled: 'bg-gray-100 text-gray-500',
+  inwork: 'bg-blue-100 text-blue-700',
+  shipped: 'bg-green-100 text-green-700',
+}
+
+type OrdSortKey = 'order_id' | 'created_at' | 'state' | 'clnt_name' | 'delivery_name'
+
+function OutdocsRow({ outdocs, colSpan, navigate }: {
+  outdocs: OrderListItem['outdocs']
+  colSpan: number
+  navigate: (path: string) => void
+}) {
+  if (!outdocs?.length) return null
+  return (
+    <tr>
+      <td colSpan={colSpan} className="px-4 pt-0 pb-1 bg-white group-hover:bg-gray-50 transition-colors">
+        <div className="flex flex-wrap gap-x-6 gap-y-1">
+          {outdocs.map((od) => (
+            <span key={od.outdoc_id} className="flex items-center gap-1.5 text-xs text-gray-500">
+              <span>{new Date(od.created_at).toLocaleString()}</span>
+              <a
+                href={`/outdocs/${od.outdoc_id}`}
+                onClick={(e) => { e.stopPropagation(); e.preventDefault(); navigate(`/outdocs/${od.outdoc_id}`) }}
+                className="text-primary-600 font-medium hover:underline"
+              >
+                {od.outdoc_id}
+              </a>
+              <span>{od.outdoc_type_descrip}</span>
+            </span>
+          ))}
+        </div>
+      </td>
+    </tr>
+  )
+}
+
+type Tab = 'info' | 'movements' | 'orders' | 'eans' | 'photos' | 'sn'
 
 export default function GoodDetailPage() {
   const { id } = useParams<{ id: string }>()
@@ -52,6 +99,25 @@ export default function GoodDetailPage() {
     XLSX.writeFile(wb, `movements_${goodId}_${mvGoodState}.xlsx`)
   }
 
+  // --- Orders tab state ---
+  const [ordNotCompletedOnly, setOrdNotCompletedOnly] = useState(true)
+  const [ordSearch, setOrdSearch] = useState('')
+  const [ordSortKey, setOrdSortKey] = useState<OrdSortKey>('created_at')
+  const [ordSortDir, setOrdSortDir] = useState<'asc' | 'desc'>('desc')
+  const [ordPageToken, setOrdPageToken] = useState<string | undefined>()
+  const [ordAllItems, setOrdAllItems] = useState<OrderListItem[]>([])
+
+  function handleOrdSort(key: OrdSortKey) {
+    if (key === ordSortKey) setOrdSortDir(d => d === 'asc' ? 'desc' : 'asc')
+    else { setOrdSortKey(key); setOrdSortDir('asc') }
+  }
+
+  function switchOrdMode(notCompleted: boolean) {
+    setOrdNotCompletedOnly(notCompleted)
+    setOrdAllItems([])
+    setOrdPageToken(undefined)
+  }
+
   const { data: movementsData } = useQuery({
     queryKey: ['good-movements', goodId, mvGoodState, mvFromDate, mvToDate],
     queryFn: () => goodsApi.getMovements({
@@ -74,6 +140,31 @@ export default function GoodDetailPage() {
     queryFn: () => goodsApi.getStock([goodId]),
   })
 
+  const { data: ordersData, isLoading: ordersLoading, isFetching: ordersFetching } = useQuery({
+    queryKey: ['good-orders', goodId, ordNotCompletedOnly, ordPageToken],
+    queryFn: () => ordersApi.list({
+      good_id: goodId,
+      not_completed_only: ordNotCompletedOnly || undefined,
+      page_size: 50,
+      page_token: ordPageToken,
+    }),
+    enabled: tab === 'orders',
+  })
+
+  useEffect(() => {
+    if (!ordersData) return
+    const items = ordersData.items ?? []
+    setOrdAllItems(prev => {
+      const merged = ordPageToken ? [...prev, ...items] : items
+      const seen = new Set<string>()
+      return merged.filter(item => {
+        if (seen.has(item.order_id)) return false
+        seen.add(item.order_id)
+        return true
+      })
+    })
+  }, [ordersData]) // eslint-disable-line react-hooks/exhaustive-deps
+
   const mvItems = useMemo(() => {
     const q = mvSearch.trim().toLowerCase()
     const items = movementsData?.items ?? []
@@ -91,6 +182,39 @@ export default function GoodDetailPage() {
     })
   }, [movementsData, mvSearch, mvSortKey, mvSortDir])
 
+  const ordSortedItems = useMemo(() => {
+    const q = ordSearch.trim().toLowerCase()
+    const filtered = q
+      ? ordAllItems.filter(item =>
+          [item.order_id, item.delivery_name, item.clnt_name, item.state].some(
+            v => v != null && String(v).toLowerCase().includes(q)
+          )
+        )
+      : ordAllItems
+    return [...filtered].sort((a, b) => {
+      const av = a[ordSortKey] ?? ''
+      const bv = b[ordSortKey] ?? ''
+      const cmp = typeof av === 'number' && typeof bv === 'number'
+        ? av - bv
+        : String(av).localeCompare(String(bv))
+      return ordSortDir === 'asc' ? cmp : -cmp
+    })
+  }, [ordAllItems, ordSearch, ordSortKey, ordSortDir])
+
+  function exportOrdToExcel() {
+    const rows = ordSortedItems.map(item => ({
+      [dict('created_at', 'short')]: new Date(item.created_at).toLocaleString(),
+      'Статус': STATE_LABELS[item.state] ?? item.state,
+      [dict('order_id', 'short')]: item.order_id,
+      [dict('clnt_name', 'short')]: item.clnt_name ?? '',
+      [dict('delivery_name', 'short')]: item.delivery_name ?? '',
+    }))
+    const ws = XLSX.utils.json_to_sheet(rows)
+    const wb = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(wb, ws, 'Заказы')
+    XLSX.writeFile(wb, `orders_good_${goodId}.xlsx`)
+  }
+
   if (isLoading) {
     return <div className="flex justify-center py-16"><Spinner className="w-8 h-8 text-primary-600" /></div>
   }
@@ -101,6 +225,7 @@ export default function GoodDetailPage() {
   const tabs: { key: Tab; label: string }[] = [
     { key: 'info', label: `Атрибуты (${good.attributes?.length ?? 0})` },
     { key: 'movements', label: 'Движение' },
+    { key: 'orders', label: 'Заказы' },
     { key: 'eans', label: `EAN (${good.eans?.length ?? 0})` },
     { key: 'photos', label: `Фото (${good.photos?.length ?? 0})` },
     { key: 'sn', label: 'Серийные номера' },
@@ -143,6 +268,14 @@ export default function GoodDetailPage() {
     row.stock - row.orders_inwork - row.orders_wait - row.shipment_picking - row.shipment_ready
 
   const isEmpty = visibleRows.length === 0
+
+  const ORD_SORT_COLS: { key: OrdSortKey; dictKey: Parameters<typeof dict>[0] }[] = [
+    { key: 'created_at',    dictKey: 'created_at' },
+    { key: 'state',         dictKey: 'state' },
+    { key: 'order_id',      dictKey: 'order_id' },
+    { key: 'clnt_name',     dictKey: 'clnt_name' },
+    { key: 'delivery_name', dictKey: 'delivery_name' },
+  ]
 
   return (
     <>
@@ -229,6 +362,7 @@ export default function GoodDetailPage() {
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
+                  <th className="th"><Hint text={dict('attribute_id', 'hint')}>{dict('attribute_id', 'short')}</Hint></th>
                   <th className="th"><Hint text={dict('attribute_name', 'hint')}>{dict('attribute_name', 'short')}</Hint></th>
                   <th className="th"><Hint text={dict('attribute_type', 'hint')}>{dict('attribute_type', 'short')}</Hint></th>
                   <th className="th"><Hint text={dict('value', 'hint')}>{dict('value', 'short')}</Hint></th>
@@ -237,8 +371,9 @@ export default function GoodDetailPage() {
               <tbody className="bg-white divide-y divide-gray-200">
                 {good.attributes.map((a) => (
                   <tr key={a.attribute_id}>
+                    <td className="td text-xs text-gray-400 font-mono">{a.attribute_id}</td>
                     <td className="td text-gray-500">{a.attribute_name}</td>
-                    <td className="td text-xs text-gray-400">{a.attribute_type}</td>
+                    <td className="td text-xs text-gray-400">{dictEnum('attribute_type', a.attribute_type)}</td>
                     <td className="td font-medium">
                       {a.value === null ? '—' : String(a.value)}
                     </td>
@@ -334,6 +469,103 @@ export default function GoodDetailPage() {
         </>
       )}
 
+      {tab === 'orders' && (
+        <>
+          <div className="card p-4 mb-3 flex flex-wrap items-center gap-4">
+            <div className="flex items-center gap-4">
+              {[
+                { value: true,  label: 'Незавершённые заказы' },
+                { value: false, label: 'Все заказы' },
+              ].map(o => (
+                <label key={String(o.value)} className="flex items-center gap-1.5 text-sm cursor-pointer select-none">
+                  <input
+                    type="radio"
+                    name="ord_not_completed"
+                    checked={ordNotCompletedOnly === o.value}
+                    onChange={() => switchOrdMode(o.value)}
+                    className="accent-primary-600"
+                  />
+                  {o.label}
+                </label>
+              ))}
+            </div>
+            <div className="w-px h-5 bg-gray-200" />
+            <input
+              className="input w-56 text-sm"
+              placeholder="Поиск по списку..."
+              value={ordSearch}
+              onChange={e => setOrdSearch(e.target.value)}
+            />
+            <button
+              className="btn-secondary text-sm ml-auto"
+              onClick={exportOrdToExcel}
+              disabled={ordSortedItems.length === 0}
+            >
+              Экспорт в Excel
+            </button>
+          </div>
+
+          <div className="card overflow-hidden">
+            {ordersLoading && !ordAllItems.length ? (
+              <div className="flex justify-center py-16">
+                <Spinner className="w-8 h-8 text-primary-600" />
+              </div>
+            ) : ordSortedItems.length === 0 ? (
+              <EmptyState title="Заказы не найдены" />
+            ) : (
+              <table className="min-w-full border-collapse">
+                <thead className="bg-gray-50">
+                  <tr>
+                    {ORD_SORT_COLS.map(({ key, dictKey }) => (
+                      <th
+                        key={key}
+                        className="th cursor-pointer select-none hover:bg-gray-100"
+                        onClick={() => handleOrdSort(key)}
+                      >
+                        <Hint text={dict(dictKey, 'hint')}><span>{dict(dictKey, 'short')}</span></Hint>
+                        <SortIcon active={ordSortKey === key} dir={ordSortDir} />
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                {ordSortedItems.map((item, i) => (
+                  <tbody
+                    key={`${item.order_id}-${i}`}
+                    className="border-t border-gray-200 group cursor-pointer"
+                    onClick={() => navigate(`/orders/${item.order_id}`)}
+                  >
+                    <tr className="group-hover:bg-gray-50 transition-colors">
+                      <td className="td text-gray-500">{new Date(item.created_at).toLocaleString()}</td>
+                      <td className="td">
+                        <span className={`badge ${STATE_COLORS[item.state] ?? 'bg-gray-100 text-gray-600'}`}>
+                          {STATE_LABELS[item.state] ?? item.state}
+                        </span>
+                      </td>
+                      <td className="td font-medium text-primary-600">{item.order_id}</td>
+                      <td className="td text-gray-500">{item.clnt_name ?? '—'}</td>
+                      <td className="td text-gray-500">{item.delivery_name ?? '—'}</td>
+                    </tr>
+                    <OutdocsRow outdocs={item.outdocs} colSpan={5} navigate={navigate} />
+                  </tbody>
+                ))}
+              </table>
+            )}
+
+            {ordersData?.page_next_token && (
+              <div className="p-4 border-t border-gray-200 text-center">
+                <button
+                  className="btn-secondary"
+                  disabled={ordersFetching}
+                  onClick={() => setOrdPageToken(ordersData.page_next_token)}
+                >
+                  {ordersFetching ? <Spinner className="w-4 h-4" /> : 'Загрузить ещё'}
+                </button>
+              </div>
+            )}
+          </div>
+        </>
+      )}
+
       {tab === 'eans' && (
         <div className="card p-6">
           {good.eans && good.eans.length > 0 ? (
@@ -371,16 +603,20 @@ export default function GoodDetailPage() {
       {tab === 'sn' && (
         <div className="card overflow-hidden">
           {(() => {
-            const items = (snData as { items?: string[] } | undefined)?.items
+            const items = (snData as { items?: { good_id: string; good_sn: string; state: string }[] } | undefined)?.items
             return items && items.length > 0 ? (
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
-                  <tr><th className="th">Серийный номер</th></tr>
+                  <tr>
+                    <th className="th"><Hint text={dict('good_sn', 'hint')}>{dict('good_sn', 'short')}</Hint></th>
+                    <th className="th"><Hint text={dict('state', 'hint')}>{dict('state', 'short')}</Hint></th>
+                  </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
                   {items.map((sn, i) => (
                     <tr key={i}>
-                      <td className="td font-mono text-sm">{sn}</td>
+                      <td className="td font-mono text-sm">{sn.good_sn}</td>
+                      <td className="td text-sm text-gray-500">{dictEnum('sn_state', sn.state)}</td>
                     </tr>
                   ))}
                 </tbody>

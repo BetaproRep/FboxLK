@@ -83,6 +83,7 @@ export interface OrderListRequest {
   to_date?: string
   not_completed_only?: boolean
   order_ids?: string[]
+  good_id?: string
   page_size?: number
   page_token?: string
 }
