@@ -539,6 +539,174 @@ describe('parseOrderTemplate — regex', () => {
   })
 })
 
+// ── parseColumnSchema: скалярный массив (+) ──────────────────────────────────
+
+describe('parseColumnSchema — isScalarArray (+)', () => {
+  it('базовый str+', () => {
+    const s = parseColumnSchema('eans:str+')!
+    expect(s.type).toBe('str')
+    expect(s.isScalarArray).toBe(true)
+    expect(s.required).toBe(false)
+    expect(s.isArray).toBe(false)
+  })
+
+  it('без + — isScalarArray undefined', () => {
+    const s = parseColumnSchema('eans:str')!
+    expect(s.isScalarArray).toBeUndefined()
+  })
+
+  it('совместим с *: str+*', () => {
+    const s = parseColumnSchema('eans:str+*')!
+    expect(s.isScalarArray).toBe(true)
+    expect(s.required).toBe(true)
+  })
+
+  it('совместим с regex: str+{^\\d{13}$~EAN должен содержать ровно 13 цифр}', () => {
+    const s = parseColumnSchema('eans:str+{^\\d{13}$~EAN должен содержать ровно 13 цифр}')!
+    expect(s.isScalarArray).toBe(true)
+    expect(s.regex).toBeInstanceOf(RegExp)
+    expect(s.regexError).toBe('EAN должен содержать ровно 13 цифр')
+  })
+
+  it('совместим с allowedValues: str+(A,B,C)', () => {
+    const s = parseColumnSchema('statuses:str+(A,B,C)')!
+    expect(s.isScalarArray).toBe(true)
+    expect(s.allowedValues).toEqual(['A', 'B', 'C'])
+  })
+
+  it('совместим с int и num типами', () => {
+    expect(parseColumnSchema('ids:int+')!.type).toBe('int')
+    expect(parseColumnSchema('vals:num+')!.type).toBe('num')
+  })
+
+  it('совместим с [] массивом: goods[].eans:str+', () => {
+    const s = parseColumnSchema('goods[].eans:str+')!
+    expect(s.isArray).toBe(true)
+    expect(s.isScalarArray).toBe(true)
+    expect(s.arrayName).toBe('goods')
+    expect(s.localKey).toBe('eans')
+  })
+})
+
+// ── parseTemplate: скалярный массив (+) ──────────────────────────────────────
+
+describe('parseTemplate — isScalarArray (+)', () => {
+  const H   = ['Заказ', 'Доставка', 'EAN']
+  const dsl = ['order_id:str*', 'delivery_id:int*', 'eans:str+{^\\d{13}$~EAN должен содержать ровно 13 цифр}']
+
+  it('два значения через запятую → массив из двух строк', () => {
+    const rows = [H, dsl, ['ORD-1', 101, '1234567890123, 1234567890124']]
+    const { items, errors } = parseTemplate(rows)
+    expect(errors).toHaveLength(0)
+    expect((items[0] as Record<string, unknown>).eans).toEqual(['1234567890123', '1234567890124'])
+  })
+
+  it('одно значение → массив из одного элемента', () => {
+    const rows = [H, dsl, ['ORD-1', 101, '1234567890123']]
+    const { items, errors } = parseTemplate(rows)
+    expect(errors).toHaveLength(0)
+    expect((items[0] as Record<string, unknown>).eans).toEqual(['1234567890123'])
+  })
+
+  it('пробелы вокруг элементов обрезаются', () => {
+    const rows = [H, dsl, ['ORD-1', 101, ' 1234567890123 , 1234567890124 ']]
+    const { items } = parseTemplate(rows)
+    expect((items[0] as Record<string, unknown>).eans).toEqual(['1234567890123', '1234567890124'])
+  })
+
+  it('пустая ячейка → поле не устанавливается', () => {
+    const rows = [H, dsl, ['ORD-1', 101, '']]
+    const { items } = parseTemplate(rows)
+    expect((items[0] as Record<string, unknown>).eans).toBeUndefined()
+  })
+
+  it('required + пустая ячейка → ошибка обязательного поля', () => {
+    const dslReq = ['order_id:str*', 'delivery_id:int*', 'eans:str+*']
+    const rows   = [H, dslReq, ['ORD-1', 101, '']]
+    const { errors } = parseTemplate(rows)
+    expect(errors).toHaveLength(1)
+    expect(errors[0].field).toBe('eans')
+    expect(errors[0].message).toBe('обязательное поле не заполнено')
+  })
+
+  it('один элемент не проходит regex → ошибка с номером элемента', () => {
+    const rows = [H, dsl, ['ORD-1', 101, '1234567890123, BAD']]
+    const { errors } = parseTemplate(rows)
+    expect(errors).toHaveLength(1)
+    expect(errors[0].field).toBe('eans')
+    expect(errors[0].message).toContain('элемент 2')
+    expect(errors[0].message).toContain('EAN должен содержать ровно 13 цифр')
+  })
+
+  it('несколько невалидных элементов → все ошибки, поле не устанавливается', () => {
+    const rows = [H, dsl, ['ORD-1', 101, 'BAD1, BAD2, 1234567890123']]
+    const { items, errors } = parseTemplate(rows)
+    expect(errors).toHaveLength(2)
+    expect(errors[0].message).toContain('элемент 1')
+    expect(errors[1].message).toContain('элемент 2')
+    expect((items[0] as Record<string, unknown>).eans).toBeUndefined()
+  })
+
+  it('int+ — числа правильно приводятся к типу int', () => {
+    const dslInt = ['order_id:str*', 'delivery_id:int*', 'codes:int+']
+    const rows   = [H, dslInt, ['ORD-1', 101, '1, 2, 3']]
+    const { items, errors } = parseTemplate(rows)
+    expect(errors).toHaveLength(0)
+    expect((items[0] as Record<string, unknown>).codes).toEqual([1, 2, 3])
+  })
+
+  it('int+ — нечисловое значение в элементе → ошибка с номером элемента', () => {
+    const dslInt = ['order_id:str*', 'delivery_id:int*', 'codes:int+']
+    const rows   = [H, dslInt, ['ORD-1', 101, '1, abc, 3']]
+    const { errors } = parseTemplate(rows)
+    expect(errors).toHaveLength(1)
+    expect(errors[0].field).toBe('codes')
+    expect(errors[0].message).toContain('элемент 2')
+  })
+
+  it('allowedValues применяется к каждому элементу', () => {
+    const dslAV  = ['order_id:str*', 'delivery_id:int*', 'statuses:str+(A,B,C)']
+    const rowsOk  = [H, dslAV, ['ORD-1', 101, 'A, B']]
+    const rowsBad = [H, dslAV, ['ORD-1', 101, 'A, X']]
+    expect(parseTemplate(rowsOk).errors).toHaveLength(0)
+    const { errors } = parseTemplate(rowsBad)
+    expect(errors).toHaveLength(1)
+    expect(errors[0].message).toContain('элемент 2')
+  })
+
+  it('allowedValues: сравнение case-insensitive для str+', () => {
+    const dslAV = ['order_id:str*', 'delivery_id:int*', 'statuses:str+(A,B,C)']
+    const rows  = [H, dslAV, ['ORD-1', 101, 'a, b']]
+    expect(parseTemplate(rows).errors).toHaveLength(0)
+  })
+
+  it('+ совместно с [] массивом: каждый элемент goods[] получает поле-массив eans', () => {
+    const H2   = ['Заказ', 'Товар', 'EAN']
+    const dsl2 = ['order_id:str*!', 'goods[].good_id:str*', 'goods[].eans:str+']
+    const rows = [
+      H2, dsl2,
+      ['ORD-1', 'AR-1', '1234567890123, 1234567890124'],
+      ['',      'AR-2', '9876543210123'],
+    ]
+    const { items, errors } = parseTemplate(rows)
+    expect(errors).toHaveLength(0)
+    const goods = (items[0] as Record<string, unknown>).goods as Array<Record<string, unknown>>
+    expect(goods).toHaveLength(2)
+    expect(goods[0].eans).toEqual(['1234567890123', '1234567890124'])
+    expect(goods[1].eans).toEqual(['9876543210123'])
+  })
+
+  it('+ в [] массиве: невалидный элемент → ошибка с label строки', () => {
+    const H2   = ['Заказ', 'Товар', 'EAN']
+    const dsl2 = ['order_id:str*!', 'goods[].good_id:str*', 'goods[].eans:str+{^\\d{13}$~EAN должен содержать ровно 13 цифр}']
+    const rows = [H2, dsl2, ['ORD-1', 'AR-1', '1234567890123, BAD']]
+    const { errors } = parseTemplate(rows)
+    expect(errors).toHaveLength(1)
+    expect(errors[0].field).toBe('goods[].eans')
+    expect(errors[0].message).toContain('элемент 2')
+  })
+})
+
 // ── parseColumnSchema: isKey (!) ──────────────────────────────────────────────
 
 describe('parseColumnSchema — isKey (!)', () => {

@@ -24,6 +24,8 @@ export interface ColumnSchema {
   pathParts: string[]
   required: boolean
   type: 'str' | 'int' | 'num' | 'bool'
+  /** true — значение ячейки разбивается по запятой в массив скаляров */
+  isScalarArray?: boolean
   default?: unknown
   /** Допустимые значения из DSL (4,23,24) — уже trim+uppercase */
   allowedValues?: string[]
@@ -127,6 +129,10 @@ export function parseColumnSchema(dsl: string): ColumnSchema | null {
   const required = typeSpec.includes('*')
   typeSpec = typeSpec.replace('*', '')
 
+  // scalar array (+) — значение ячейки разбивается по запятой
+  const isScalarArray = typeSpec.includes('+')
+  typeSpec = typeSpec.replace('+', '')
+
   const VALID_TYPES = ['str', 'int', 'num', 'bool'] as const
   if (!(VALID_TYPES as readonly string[]).includes(typeSpec)) return null
 
@@ -160,7 +166,7 @@ export function parseColumnSchema(dsl: string): ColumnSchema | null {
 
   return {
     dsl: s, path, isArray, arrayParentParts, arrayName, localKey, pathParts,
-    required, type, default: defaultValue,
+    required, type, isScalarArray: isScalarArray || undefined, default: defaultValue,
     allowedValues, regex, regexError,
     isExpand: isExpand || undefined,
     isKey: isKey || undefined,
@@ -255,6 +261,34 @@ function coerceAndValidate(
   }
 
   return result
+}
+
+/** Разбить значение ячейки по запятой и проверить каждый элемент */
+function coerceAndValidateScalarArray(
+  raw: unknown,
+  schema: ColumnSchema,
+  errors: Array<{ message: string }>
+): { value: unknown[] } | null {
+  const str = String(raw).trim()
+  if (!str) return null
+
+  const parts = str.split(',').map(p => p.trim()).filter(p => p !== '')
+  if (parts.length === 0) return null
+
+  const result: unknown[] = []
+  let hasError = false
+
+  for (let i = 0; i < parts.length; i++) {
+    const localErrors: Array<{ message: string }> = []
+    const coerced = coerceAndValidate(parts[i], schema, localErrors)
+    if (localErrors.length > 0) {
+      localErrors.forEach(e => errors.push({ message: `элемент ${i + 1}: ${e.message}` }))
+      hasError = true
+    }
+    if (coerced != null) result.push(coerced.value)
+  }
+
+  return hasError ? null : { value: result }
 }
 
 // ── Универсальный парсер шаблонов ─────────────────────────────────────────────
@@ -364,7 +398,9 @@ export function parseTemplate<T = Record<string, unknown>>(
       }
 
       const localErrors: Array<{ message: string }> = []
-      const result = coerceAndValidate(rawValue, schema, localErrors)
+      const result = schema.isScalarArray
+        ? coerceAndValidateScalarArray(rawValue, schema, localErrors)
+        : coerceAndValidate(rawValue, schema, localErrors)
       localErrors.forEach(e => itemErrors.push({ row: group.fileRowStart, field: schema.path, label: labels[colIdx] ?? schema.path, message: e.message }))
       if (result != null) setDeep(item, schema.pathParts, result.value)
     }
@@ -405,7 +441,9 @@ export function parseTemplate<T = Record<string, unknown>>(
           }
 
           const localErrors: Array<{ message: string }> = []
-          const result = coerceAndValidate(rawValue, schema, localErrors)
+          const result = schema.isScalarArray
+            ? coerceAndValidateScalarArray(rawValue, schema, localErrors)
+            : coerceAndValidate(rawValue, schema, localErrors)
           const fileRow = group.fileRowStart + rowOffset
           localErrors.forEach(e => itemErrors.push({ row: fileRow, field: schema.path, label: `${labels[colIdx] ?? schema.path} строка ${rowOffset + 1}`, message: e.message }))
           if (result != null) {
