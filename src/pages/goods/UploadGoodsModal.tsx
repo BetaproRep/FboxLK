@@ -8,6 +8,7 @@ import Modal from '@/components/ui/Modal'
 import FormAlert from '@/components/ui/FormAlert'
 import Spinner from '@/components/ui/Spinner'
 import DownloadFilesModal from '@/components/ui/DownloadFilesModal'
+import { useConfirmDialog } from '@/components/ui/ConfirmDialog'
 
 type GoodItem = Record<string, unknown>
 
@@ -28,6 +29,7 @@ interface Props {
 
 export default function UploadGoodsModal({ isOpen, onClose }: Props) {
   const qc = useQueryClient()
+  const { confirm, confirmNode } = useConfirmDialog()
   const [entries, setEntries] = useState<GoodEntry[]>([])
   const [jsonViewIdx, setJsonViewIdx] = useState<number | null>(null)
   const [alert, setAlert] = useState<Alert | null>(null)
@@ -79,8 +81,9 @@ export default function UploadGoodsModal({ isOpen, onClose }: Props) {
     }))
 
     if (entries.length > 0) {
-      const replace = window.confirm(
-        `Уже загружено ${entries.length} товаров.\nЗаменить?\nОтмена — добавить к существующим.`,
+      const replace = await confirm(
+        `Уже загружено ${entries.length} товаров`,
+        { description: 'Заменить их данными из буфера?', confirmLabel: 'Заменить', cancelLabel: 'Добавить к существующим', variant: 'primary' }
       )
       setEntries(replace ? newEntries : [...entries, ...newEntries])
     } else {
@@ -259,6 +262,8 @@ export default function UploadGoodsModal({ isOpen, onClose }: Props) {
       </Modal>
 
       <DownloadFilesModal isOpen={downloadOpen} onClose={() => setDownloadOpen(false)} fileType={4} />
+
+      {confirmNode}
 
       {currentGood && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center">

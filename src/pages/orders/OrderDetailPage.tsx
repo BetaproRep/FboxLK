@@ -10,6 +10,7 @@ import Spinner from '@/components/ui/Spinner'
 import PropList from '@/components/ui/PropList'
 import type { PropItem } from '@/components/ui/PropList'
 import OrderStateBadge from '@/components/ui/OrderStateBadge'
+import { useConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { dict, dictEnum } from '@/constants/dict'
 import Hint from '@/components/ui/Hint'
 
@@ -37,7 +38,15 @@ export default function OrderDetailPage() {
   const qc = useQueryClient()
   const orderId = decodeURIComponent(id!)
 
-  const [tab, setTab] = useState<Tab>('goods')
+  const { confirm, confirmNode } = useConfirmDialog()
+
+  const tabKey = `order-tab-${orderId}`
+  const [tab, setTab] = useState<Tab>(() => (sessionStorage.getItem(tabKey) as Tab) ?? 'goods')
+
+  function handleSetTab(t: Tab) {
+    sessionStorage.setItem(tabKey, t)
+    setTab(t)
+  }
 
   const { data: jsonData, isLoading: jsonLoading } = useQuery({
     queryKey: ['order-json', orderId],
@@ -101,7 +110,7 @@ export default function OrderDetailPage() {
           <div className="flex gap-2">
             <button
               className="btn-danger"
-              onClick={() => { if (confirm('Отменить заказ?')) cancelMutation.mutate() }}
+              onClick={async () => { if (await confirm('Отменить заказ?', { confirmLabel: 'Отменить' })) cancelMutation.mutate() }}
               disabled={cancelMutation.isPending || order.canceled}
             >
               Отменить
@@ -114,7 +123,7 @@ export default function OrderDetailPage() {
         {tabs.map(({ key, label }) => (
           <button
             key={key}
-            onClick={() => setTab(key)}
+            onClick={() => handleSetTab(key)}
             className={`px-4 py-2 text-sm font-medium whitespace-nowrap border-b-2 transition-colors ${
               tab === key
                 ? 'border-primary-600 text-primary-600'
@@ -234,7 +243,7 @@ export default function OrderDetailPage() {
                 { dictKey: 'plt_barcode', value: unit.barcode },
                 { dictKey: 'pack_name',  value: unit.pack_name },
                 { dictKey: 'pack_weight',value: unit.pack_weight != null ? `${unit.pack_weight} г` : null },
-                { dictKey: 'weight',     value: unit.weight != null ? `${unit.weight} г` : null },
+                { dictKey: 'weight__parunit',     value: unit.weight != null ? `${unit.weight} г` : null },
                 { dictKey: 'unit_dims',  value: unitDims },
               ]
               return (
@@ -340,6 +349,7 @@ export default function OrderDetailPage() {
           )}
         </div>
       )}
+      {confirmNode}
     </>
   )
 }

@@ -4,40 +4,41 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import toast from 'react-hot-toast'
 import { indocsApi } from '@/api/indocs'
 import { goodsApi } from '@/api/goods'
+import { ordersApi } from '@/api/orders'
 import PageHeader from '@/components/ui/PageHeader'
 import Spinner from '@/components/ui/Spinner'
 import EmptyState from '@/components/ui/EmptyState'
 import JsonViewer from '@/components/ui/JsonViewer'
-import type { IndocListItem, IndocJson } from '@/types/indoc'
-import { dict } from '@/constants/dict'
+import type { IndocListItem, WebIndocListItem, IndocJson, IndocAttribute, IndocPhoto } from '@/types/indoc'
+import type { OrderListItem } from '@/types/order'
+import OrderStateBadge from '@/components/ui/OrderStateBadge'
+import { dict, dictEnum } from '@/constants/dict'
 import Hint from '@/components/ui/Hint'
+import PropList from '@/components/ui/PropList'
+import IndocStateBadge from '@/components/ui/IndocStateBadge'
+import { useConfirmDialog } from '@/components/ui/ConfirmDialog'
 
 // ─── Вкладки ────────────────────────────────────────────────────────────────
 
-type CoreTab = 'json' | 'files' | 'photos'
+type CoreTab = 'attrs' | 'outdocs' | 'json' | 'files' | 'photos'
 type TypeTab = 'goods' | 'orders' | 'boxes'
 type Tab = CoreTab | TypeTab
 
-function typeTab(indocType: IndocJson['indoc_type']): { id: TypeTab; label: string } | null {
+function typeTab(indocType: WebIndocListItem['indoc_type']): { id: TypeTab; label: string } | null {
   switch (indocType) {
-    case 'goods_supply_task':    return { id: 'goods',  label: 'Товары' }
-    case 'goods_shipment_task':  return { id: 'goods',  label: 'Товары' }
+    case 'goods_supply_task':    return { id: 'goods',  label: 'Ожидаемые товары' }
+    case 'goods_shipment_task':  return { id: 'goods',  label: 'Товары к отгрузке' }
     case 'orders_shipment_task': return { id: 'orders', label: 'Заказы' }
     case 'goods_from_long_storage_task': return { id: 'boxes', label: 'Коробки' }
     default: return null
   }
 }
 
-const INDOC_TYPE_LABELS: Record<IndocJson['indoc_type'], string> = {
-  goods_supply_task:             'Поставка товаров',
-  goods_shipment_task:           'Отгрузка товаров',
-  orders_shipment_task:          'Отгрузка заказов',
-  goods_from_long_storage_task:  'Возврат из длительного хранения',
-}
-
 // ─── Компоненты вкладок ──────────────────────────────────────────────────────
 
 function GoodsTab({ indoc }: { indoc: IndocJson }) {
+  const navigate = useNavigate()
+
   const isApplicable =
     indoc.indoc_type === 'goods_supply_task' || indoc.indoc_type === 'goods_shipment_task'
 
@@ -51,6 +52,14 @@ function GoodsTab({ indoc }: { indoc: IndocJson }) {
 
   const goodsMap = new Map(goodsData?.items.map((g) => [g.good_id, g.good_name]))
 
+  const showSn =
+    (indoc.indoc_type === 'goods_supply_task' || indoc.indoc_type === 'goods_shipment_task') &&
+    indoc.items.some((i) => i.sn_mandant)
+
+  const showPrice =
+    indoc.indoc_type === 'goods_shipment_task' &&
+    indoc.items.some((i) => (i as { price?: number }).price != null)
+
   if (!isApplicable) return null
 
   return (
@@ -60,18 +69,27 @@ function GoodsTab({ indoc }: { indoc: IndocJson }) {
           <tr>
             <th className="th"><Hint text={dict('good_id', 'hint')}>{dict('good_id', 'short')}</Hint></th>
             <th className="th"><Hint text={dict('good_name', 'hint')}>{dict('good_name', 'short')}</Hint></th>
-            <th className="th text-right"><Hint text={dict('plan_qnt', 'hint')}>{dict('plan_qnt', 'short')}</Hint></th>
-            {indoc.indoc_type === 'goods_shipment_task' && (
+            <th className="th text-right">
+              {indoc.indoc_type === 'goods_supply_task'
+                ? <Hint text={dict('plan_qnt__in', 'hint')}>{dict('plan_qnt__in', 'short')}</Hint>
+                : <Hint text={dict('plan_qnt__out', 'hint')}>{dict('plan_qnt__out', 'short')}</Hint>
+              }
+            </th>
+            {showPrice && (
               <th className="th text-right"><Hint text={dict('price', 'hint')}>{dict('price', 'short')}</Hint></th>
             )}
-            {indoc.indoc_type === 'goods_supply_task' && (
+            {showSn && (
               <th className="th"><Hint text={dict('sn_mandant', 'hint')}>{dict('sn_mandant', 'short')}</Hint></th>
             )}
           </tr>
         </thead>
         <tbody className="bg-white divide-y divide-gray-100">
           {indoc.items.map((item, i) => (
-            <tr key={i} className="hover:bg-gray-50">
+            <tr
+              key={i}
+              className="hover:bg-gray-50 cursor-pointer"
+              onClick={() => navigate(`/goods/${encodeURIComponent(item.good_id)}`)}
+            >
               <td className="td font-medium text-primary-600">{item.good_id}</td>
               <td className="td text-gray-700">
                 {goodsMap.get(item.good_id) ?? (
@@ -79,16 +97,16 @@ function GoodsTab({ indoc }: { indoc: IndocJson }) {
                 )}
               </td>
               <td className="td text-right">{item.plan_qnt}</td>
-              {indoc.indoc_type === 'goods_shipment_task' && (
+              {showPrice && (
                 <td className="td text-right text-gray-500">
                   {(item as { price?: number }).price != null
                     ? `${(item as { price?: number }).price} ₽`
                     : '—'}
                 </td>
               )}
-              {indoc.indoc_type === 'goods_supply_task' && (
+              {showSn && (
                 <td className="td text-gray-500">
-                  {item.sn_mandant ? 'Обязателен' : '—'}
+                  {item.sn_mandant ? 'Требуется' : '—'}
                 </td>
               )}
             </tr>
@@ -101,42 +119,194 @@ function GoodsTab({ indoc }: { indoc: IndocJson }) {
 }
 
 function OrdersTab({ indoc }: { indoc: IndocJson }) {
+  const navigate = useNavigate()
+
+  const orderIds = indoc.indoc_type === 'orders_shipment_task'
+    ? indoc.orders.map((o) => o.order_id)
+    : []
+
+  const { data, isLoading } = useQuery({
+    queryKey: ['orders-by-ids', orderIds],
+    queryFn: () => ordersApi.list({ order_ids: orderIds }),
+    enabled: orderIds.length > 0,
+  })
+
   if (indoc.indoc_type !== 'orders_shipment_task') return null
+
+  const items: OrderListItem[] = data?.items ?? []
+
+  if (isLoading) {
+    return <div className="flex justify-center py-8"><Spinner className="w-6 h-6 text-primary-600" /></div>
+  }
 
   return (
     <div className="card overflow-hidden">
-      <table className="min-w-full divide-y divide-gray-200 text-sm">
+      <table className="min-w-full border-collapse">
         <thead className="bg-gray-50">
           <tr>
+            <th className="th"><Hint text={dict('created_at', 'hint')}>{dict('created_at', 'short')}</Hint></th>
+            <th className="th"><Hint text={dict('state', 'hint')}>{dict('state', 'short')}</Hint></th>
             <th className="th"><Hint text={dict('order_id', 'hint')}>{dict('order_id', 'short')}</Hint></th>
-            <th className="th"><Hint text={dict('origin', 'hint')}>{dict('origin', 'short')}</Hint></th>
-            <th className="th">Получатель</th>
-            <th className="th">Адрес</th>
-            <th className="th text-right">{dict('good_name', 'short')}</th>
+            <th className="th"><Hint text={dict('clnt_name', 'hint')}>{dict('clnt_name', 'short')}</Hint></th>
+            <th className="th"><Hint text={dict('delivery_name', 'hint')}>{dict('delivery_name', 'short')}</Hint></th>
           </tr>
         </thead>
-        <tbody className="bg-white divide-y divide-gray-100">
-          {indoc.orders.map((order, i) => (
-            <tr key={i} className="hover:bg-gray-50">
-              <td className="td font-medium text-primary-600">{order.order_id}</td>
-              <td className="td text-gray-500">{order.origin ?? '—'}</td>
-              <td className="td text-gray-700">
-                <div>{order.client?.name ?? '—'}</div>
-                {order.client?.phone && (
-                  <div className="text-xs text-gray-400">{order.client.phone}</div>
+        {items.map((item) => (
+          <tbody
+            key={item.order_id}
+            className="border-t border-gray-200 group cursor-pointer"
+            onClick={() => navigate(`/orders/${encodeURIComponent(item.order_id)}`)}
+          >
+            <tr className="group-hover:bg-gray-50 transition-colors">
+              <td className="td text-gray-500">{new Date(item.created_at).toLocaleString()}</td>
+              <td className="td"><OrderStateBadge state={item.state} /></td>
+              <td className="td font-medium text-primary-600">{item.order_id}</td>
+              <td className="td text-gray-500">{item.clnt_name ?? '—'}</td>
+              <td className="td text-gray-500">{item.delivery_name ?? '—'}</td>
+            </tr>
+            {item.outdocs?.length ? (
+              <tr>
+                <td colSpan={5} className="px-4 pt-0 pb-1 bg-white group-hover:bg-gray-50 transition-colors">
+                  <div className="flex flex-wrap gap-x-6 gap-y-1">
+                    {item.outdocs.map((od) => (
+                      <span key={od.outdoc_id} className="flex items-center gap-1.5 text-xs text-gray-500">
+                        <span>{new Date(od.created_at).toLocaleString()}</span>
+                        <a
+                          href={`/outdocs/${od.outdoc_id}`}
+                          onClick={(e) => { e.stopPropagation(); e.preventDefault(); navigate(`/outdocs/${od.outdoc_id}`) }}
+                          className="text-primary-600 font-medium hover:underline"
+                        >
+                          {od.outdoc_id}
+                        </a>
+                        <span>{od.outdoc_type_descrip}</span>
+                      </span>
+                    ))}
+                  </div>
+                </td>
+              </tr>
+            ) : null}
+          </tbody>
+        ))}
+      </table>
+      {items.length === 0 && <EmptyState title="Заказов нет" />}
+    </div>
+  )
+}
+
+function PhotosTab({ photos }: { photos: IndocPhoto[] }) {
+  const navigate = useNavigate()
+
+  const goodIds = [...new Set(photos.map((p) => p.good_id).filter(Boolean) as string[])]
+
+  const { data: goodsData } = useQuery({
+    queryKey: ['goods-by-ids', goodIds],
+    queryFn: () => goodsApi.list({ good_ids: goodIds }),
+    enabled: goodIds.length > 0,
+  })
+
+  const goodsMap = new Map(goodsData?.items.map((g) => [g.good_id, g.good_name]))
+
+  if (photos.length === 0) return <div className="card p-6"><EmptyState title="Фото нет" /></div>
+
+  return (
+    <div className="card p-6">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+        {photos.map((p) => (
+          <div key={p.photo_id} className="flex flex-col rounded-lg border border-gray-200 overflow-hidden">
+            <a href={p.url} target="_blank" rel="noreferrer" className="block">
+              <img
+                src={p.url}
+                alt={p.descrip ?? 'фото'}
+                className="w-full aspect-square object-cover hover:opacity-90 transition-opacity"
+              />
+            </a>
+            {(p.descrip || p.good_id || p.order_id) && (
+              <div className="px-2 py-1.5 flex flex-col gap-0.5 text-xs bg-white">
+                {p.descrip && (
+                  <span className="text-gray-500 truncate" title={p.descrip}>{p.descrip}</span>
                 )}
-              </td>
-              <td className="td text-gray-500 max-w-xs">
-                {order.address
-                  ? [order.address.city, order.address.street, order.address.house].filter(Boolean).join(', ')
-                  : '—'}
-              </td>
-              <td className="td text-right">{order.goods?.length ?? 0}</td>
+                {p.good_id && (
+                  <button
+                    className="text-left text-primary-600 hover:underline truncate"
+                    onClick={() => navigate(`/goods/${encodeURIComponent(p.good_id!)}`)}
+                    title={goodsMap.get(p.good_id) ?? p.good_id}
+                  >
+                    {p.good_id}{goodsMap.get(p.good_id) ? ` · ${goodsMap.get(p.good_id)}` : ''}
+                  </button>
+                )}
+                {p.order_id && (
+                  <button
+                    className="text-left text-primary-600 hover:underline truncate"
+                    onClick={() => navigate(`/orders/${encodeURIComponent(p.order_id!)}`)}
+                  >
+                    {p.order_id}
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function AttrsTab({ attrs }: { attrs: IndocAttribute[] }) {
+  if (attrs.length === 0) return <div className="card p-6"><EmptyState title="Атрибутов нет" /></div>
+  return (
+    <div className="card overflow-hidden">
+      <table className="min-w-full divide-y divide-gray-200">
+        <thead className="bg-gray-50">
+          <tr>
+            <th className="th"><Hint text={dict('attribute_id', 'hint')}>{dict('attribute_id', 'short')}</Hint></th>
+            <th className="th"><Hint text={dict('attribute_name', 'hint')}>{dict('attribute_name', 'short')}</Hint></th>
+            <th className="th"><Hint text={dict('attribute_type', 'hint')}>{dict('attribute_type', 'short')}</Hint></th>
+            <th className="th"><Hint text={dict('value', 'hint')}>{dict('value', 'short')}</Hint></th>
+          </tr>
+        </thead>
+        <tbody className="bg-white divide-y divide-gray-200">
+          {attrs.map((a) => (
+            <tr key={a.attribute_id}>
+              <td className="td text-xs text-gray-400 font-mono">{a.attribute_id}</td>
+              <td className="td text-gray-500">{a.attribute_name}</td>
+              <td className="td text-xs text-gray-400">{dictEnum('attribute_type', a.attribute_type)}</td>
+              <td className="td font-medium">{a.value === null ? '—' : String(a.value)}</td>
             </tr>
           ))}
         </tbody>
       </table>
-      {indoc.orders.length === 0 && <EmptyState title="Заказов нет" />}
+    </div>
+  )
+}
+
+function OutdocsTab({ outdocs }: { outdocs: NonNullable<WebIndocListItem['outdocs']> }) {
+  const navigate = useNavigate()
+  return (
+    <div className="card overflow-hidden">
+      <table className="min-w-full divide-y divide-gray-200">
+        <thead className="bg-gray-50">
+          <tr>
+            <th className="th"><Hint text={dict('created_at', 'hint')}>{dict('created_at', 'short')}</Hint></th>
+            <th className="th"><Hint text={dict('outdoc_date', 'hint')}>{dict('outdoc_date', 'short')}</Hint></th>
+            <th className="th"><Hint text={dict('outdoc_id', 'hint')}>{dict('outdoc_id', 'short')}</Hint></th>
+            <th className="th"><Hint text={dict('outdoc_type_descrip', 'hint')}>{dict('outdoc_type_descrip', 'short')}</Hint></th>
+          </tr>
+        </thead>
+        <tbody className="bg-white divide-y divide-gray-200">
+          {outdocs.map((od) => (
+            <tr
+              key={od.outdoc_id}
+              className="hover:bg-gray-50 cursor-pointer transition-colors"
+              onClick={() => navigate(`/outdocs/${od.outdoc_id}`)}
+            >
+              <td className="td text-gray-500">{new Date(od.created_at).toLocaleString()}</td>
+              <td className="td text-gray-500">{new Date(od.outdoc_date).toLocaleDateString()}</td>
+              <td className="td font-medium text-primary-600">{od.outdoc_id}</td>
+              <td className="td text-gray-500">{od.outdoc_type_descrip}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   )
 }
@@ -168,17 +338,39 @@ export default function IndocDetailPage() {
   const navigate = useNavigate()
   const location = useLocation()
   const qc = useQueryClient()
-  const indocId = id!
+  const indocId = decodeURIComponent(id!)
 
-  // Метаданные из состояния роутера (переданы при клике в списке)
+  // Метаданные из состояния роутера — fallback пока грузится webList
   const listItem = location.state?.item as IndocListItem | undefined
 
-  const initialTab: Tab = listItem?.indoc_type ? (typeTab(listItem.indoc_type)?.id ?? 'json') : 'json'
+  const { confirm, confirmNode } = useConfirmDialog()
+
+  const tabKey = `indoc-tab-${indocId}`
+  const initialTab: Tab = (sessionStorage.getItem(tabKey) as Tab | null)
+    ?? (listItem?.indoc_type ? (typeTab(listItem.indoc_type)?.id ?? 'json') : 'json')
   const [tab, setTab] = useState<Tab>(initialTab)
+
+  function handleSetTab(t: Tab) {
+    sessionStorage.setItem(tabKey, t)
+    setTab(t)
+  }
+
+  const { data: webListData } = useQuery({
+    queryKey: ['indoc-web', indocId],
+    queryFn: () => indocsApi.webList({ indoc_ids: [indocId] }),
+  })
+
+  const webItem = webListData?.items[0]
 
   const { data: jsonData, isLoading: jsonLoading } = useQuery({
     queryKey: ['indoc-json', indocId],
     queryFn: () => indocsApi.getJson(indocId),
+  })
+
+  const { data: attrsData } = useQuery({
+    queryKey: ['indoc-attrs', indocId],
+    queryFn: () => indocsApi.getAttributes(indocId),
+    enabled: tab === 'attrs',
   })
 
   const { data: filesData } = useQuery({
@@ -219,45 +411,65 @@ export default function IndocDetailPage() {
   })
 
   const indoc = jsonData?.indoc
-  const specificTab = indoc ? typeTab(indoc.indoc_type) : null
 
-  // Если загрузился тип и текущая вкладка — 'json', оставляем; иначе всё ок
+  // Заголовок — из webList; fallback на router state пока запрос не завершён
+  const indocType = webItem?.indoc_type      ?? listItem?.indoc_type
+  const indocTxt  = webItem?.indoc_txt       ?? listItem?.indoc_txt
+  const createdAt = webItem?.created_at      ?? listItem?.created_at
+  const indocState   = webItem?.indoc_state
+  const stateDescrip = webItem?.indoc_state_descrip
+
+  const goodsSum =
+    indoc && (indoc.indoc_type === 'goods_supply_task' || indoc.indoc_type === 'goods_shipment_task')
+      ? indoc.items.reduce((s, i) => s + i.plan_qnt, 0)
+      : null
+
+  const specificTab = indocType ? typeTab(indocType) : null
+  const outdocs = webItem?.outdocs
   const tabs: Array<{ id: Tab; label: string }> = [
-    ...(specificTab ? [specificTab] : []),
-    { id: 'json',   label: 'JSON' },
-    { id: 'files',  label: 'Файлы' },
-    { id: 'photos', label: 'Фото' },
+    ...(specificTab ? [{
+      id: specificTab.id,
+      label: specificTab.id === 'goods' && goodsSum != null
+        ? `${specificTab.label} (${goodsSum})`
+        : specificTab.label,
+    }] : []),
+    { id: 'attrs' as Tab, label: 'Атрибуты' },
+    ...(indocType === 'goods_supply_task' || indocType === 'goods_shipment_task'
+      ? [{ id: 'files' as Tab, label: 'Файлы' }]
+      : []),
+    ...(outdocs?.length ? [{ id: 'outdocs' as Tab, label: `Исходящие документы (${outdocs.length})` }] : []),
+    ...(indocType === 'goods_supply_task' || indocType === 'goods_shipment_task'
+      ? [{ id: 'photos' as Tab, label: 'Фото' }]
+      : []),
+    { id: 'json' as Tab, label: 'JSON' },
   ]
-
-  // Заголовок: предпочитаем данные из JSON, fallback — из state роутера
-  const indocType = indoc?.indoc_type ?? listItem?.indoc_type
-  const indocTxt  = indoc?.indoc_txt  ?? listItem?.indoc_txt
-  const createdAt = listItem?.created_at
-
-  const subtitle = [
-    indocType ? INDOC_TYPE_LABELS[indocType] : undefined,
-    createdAt ? new Date(createdAt).toLocaleString('ru-RU') : undefined,
-    indocTxt,
-  ].filter(Boolean).join(' · ')
 
   return (
     <>
       <PageHeader
-        title={`Документ ${indocId}`}
-        subtitle={subtitle || undefined}
+        title={
+          <>
+            {indocType ? dictEnum('indoc_type', indocType) : indocId}
+            {indocState != null && stateDescrip && (
+              <IndocStateBadge state={indocState} descrip={stateDescrip} />
+            )}
+          </>
+        }
+        subtitle={
+          <PropList items={[
+            { dictKey: 'indoc_id',    value: indocId },
+            { dictKey: 'created_at',  value: createdAt ? new Date(createdAt).toLocaleString('ru-RU') : undefined },
+            { dictKey: 'indoc_txt',   value: indocTxt },
+          ]} />
+        }
         actions={
-          <div className="flex gap-2">
-            <button className="btn-secondary" onClick={() => navigate('/indocs')}>
-              ← Назад
-            </button>
-            <button
-              className="btn-danger"
-              onClick={() => { if (confirm('Удалить документ?')) deleteMutation.mutate() }}
-              disabled={deleteMutation.isPending}
-            >
-              Удалить
-            </button>
-          </div>
+          <button
+            className="btn-danger"
+            onClick={async () => { if (await confirm('Удалить документ?', { confirmLabel: 'Удалить' })) deleteMutation.mutate() }}
+            disabled={deleteMutation.isPending}
+          >
+            Удалить
+          </button>
         }
       />
 
@@ -265,7 +477,7 @@ export default function IndocDetailPage() {
         {tabs.map((t) => (
           <button
             key={t.id}
-            onClick={() => setTab(t.id)}
+            onClick={() => handleSetTab(t.id)}
             className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
               tab === t.id
                 ? 'border-primary-600 text-primary-600'
@@ -277,9 +489,11 @@ export default function IndocDetailPage() {
         ))}
       </div>
 
-      {tab === 'goods'  && indoc && <GoodsTab  indoc={indoc} />}
-      {tab === 'orders' && indoc && <OrdersTab indoc={indoc} />}
-      {tab === 'boxes'  && indoc && <BoxesTab  indoc={indoc} />}
+      {tab === 'goods'   && indoc    && <GoodsTab   indoc={indoc} />}
+      {tab === 'orders'  && indoc    && <OrdersTab  indoc={indoc} />}
+      {tab === 'boxes'   && indoc    && <BoxesTab   indoc={indoc} />}
+      {tab === 'attrs'   && <AttrsTab attrs={attrsData?.items ?? []} />}
+      {tab === 'outdocs' && outdocs  && <OutdocsTab outdocs={outdocs} />}
 
       {tab === 'json' && (
         <div className="card p-6">
@@ -336,25 +550,8 @@ export default function IndocDetailPage() {
         </div>
       )}
 
-      {tab === 'photos' && (
-        <div className="card p-6">
-          {photosData?.items && photosData.items.length > 0 ? (
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              {photosData.items.map((p) => (
-                <a key={p.photo_id} href={p.url} target="_blank" rel="noreferrer">
-                  <img
-                    src={p.url}
-                    alt={p.descrip ?? 'фото'}
-                    className="w-full aspect-square object-cover rounded-lg border border-gray-200 hover:opacity-90 transition-opacity"
-                  />
-                </a>
-              ))}
-            </div>
-          ) : (
-            <EmptyState title="Фото нет" />
-          )}
-        </div>
-      )}
+      {tab === 'photos' && <PhotosTab photos={photosData?.items ?? []} />}
+      {confirmNode}
     </>
   )
 }

@@ -54,7 +54,13 @@ export default function GoodDetailPage() {
   const { id } = useParams<{ id: string }>()
   const goodId = decodeURIComponent(id!)
   const navigate = useNavigate()
-  const [tab, setTab] = useState<Tab>('info')
+  const tabKey = `good-tab-${goodId}`
+  const [tab, setTab] = useState<Tab>(() => (sessionStorage.getItem(tabKey) as Tab) ?? 'info')
+
+  function handleSetTab(t: Tab) {
+    sessionStorage.setItem(tabKey, t)
+    setTab(t)
+  }
 
   const { data: goodResp, isLoading } = useQuery({
     queryKey: ['good', goodId],
@@ -226,7 +232,6 @@ export default function GoodDetailPage() {
 
   const propItems: PropItem[] = [
     { dictKey: 'good_id',   value: good.good_id },
-    { dictKey: 'good_type', value: dictEnum('good_type', good.good_type) },
     { dictKey: 'dims',      value: dims },
     { dictKey: 'weight',    value: good.weight != null ? `${good.weight} гр.` : null },
     { dictKey: 'gtr_name',  value: good.gtr_name },
@@ -269,12 +274,8 @@ export default function GoodDetailPage() {
   return (
     <>
       <PageHeader
-        title="Карточка товара"
-        subtitle={
-          <div>
-            <p className="text-base font-semibold text-gray-800 mt-0.5">{good.good_name}</p>
-            <PropList items={propItems} className="text-sm text-gray-500 mt-0.5" />
-          </div>
+        title={`${dictEnum('good_type', good.good_type)}: ${good.good_name}`}
+        subtitle={<PropList items={propItems} className="text-sm text-gray-500 mt-0.5" />
         }
       />
 
@@ -326,7 +327,7 @@ export default function GoodDetailPage() {
         {tabs.map(({ key, label }) => (
           <button
             key={key}
-            onClick={() => setTab(key)}
+            onClick={() => handleSetTab(key)}
             className={`px-4 py-2 text-sm font-medium whitespace-nowrap border-b-2 transition-colors ${
               tab === key
                 ? 'border-primary-600 text-primary-600'

@@ -6,6 +6,7 @@ import DownloadFilesModal from '@/components/ui/DownloadFilesModal'
 import { goodsApi } from '@/api/goods'
 import type { GoodDetail } from '@/types/good'
 import Modal from '@/components/ui/Modal'
+import { useConfirmDialog } from '@/components/ui/ConfirmDialog'
 import FormAlert from '@/components/ui/FormAlert'
 import Spinner from '@/components/ui/Spinner'
 import { dict } from '@/constants/dict'
@@ -77,6 +78,7 @@ interface Alert {
 
 export default function CreateGoodsShipmentTask({ isOpen, onClose }: Props) {
   const qc = useQueryClient()
+  const { confirm, confirmNode } = useConfirmDialog()
   const [indocId, setIndocId] = useState('')
   const [indocTxt, setIndocTxt] = useState('')
   const [qualType, setQualType] = useState<'useful' | 'defective'>('useful')
@@ -162,8 +164,9 @@ export default function CreateGoodsShipmentTask({ isOpen, onClose }: Props) {
 
     const hasExisting = items.some((r) => r.good_id.trim())
     if (hasExisting) {
-      const replace = window.confirm(
-        `В документе уже есть ${items.filter((r) => r.good_id.trim()).length} позиций.\nЗаменить их данными из буфера?\nОтмена — добавить к существующим.`
+      const replace = await confirm(
+        `В документе уже есть ${items.filter((r) => r.good_id.trim()).length} позиций`,
+        { description: 'Заменить их данными из буфера?', confirmLabel: 'Заменить', cancelLabel: 'Добавить к существующим', variant: 'primary' }
       )
       setItems(replace ? newItems : [...items, ...newItems])
     } else {
@@ -447,6 +450,7 @@ export default function CreateGoodsShipmentTask({ isOpen, onClose }: Props) {
         </div>
       </div>
     )}
+      {confirmNode}
     </>
   )
 }

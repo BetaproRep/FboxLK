@@ -6,6 +6,7 @@ import { indocsApi } from '@/api/indocs'
 import type { OrderCreateItem } from '@/types/order'
 import type { ParseError } from '@/utils/orderTemplateParser'
 import Modal from '@/components/ui/Modal'
+import { useConfirmDialog } from '@/components/ui/ConfirmDialog'
 import FormAlert from '@/components/ui/FormAlert'
 import Spinner from '@/components/ui/Spinner'
 import { dict } from '@/constants/dict'
@@ -29,6 +30,7 @@ interface Props {
 
 export default function CreateOrdersShipmentTask({ isOpen, onClose }: Props) {
   const qc = useQueryClient()
+  const { confirm, confirmNode } = useConfirmDialog()
   const [indocId, setIndocId] = useState('')
   const [indocTxt, setIndocTxt] = useState('')
   const [entries, setEntries] = useState<OrderEntry[]>([])
@@ -80,8 +82,9 @@ export default function CreateOrdersShipmentTask({ isOpen, onClose }: Props) {
     }))
 
     if (entries.length > 0) {
-      const replace = window.confirm(
-        `Уже загружено ${entries.length} заказов.\nЗаменить?\nОтмена — добавить к существующим.`
+      const replace = await confirm(
+        `Уже загружено ${entries.length} заказов`,
+        { description: 'Заменить их данными из буфера?', confirmLabel: 'Заменить', cancelLabel: 'Добавить к существующим', variant: 'primary' }
       )
       setEntries(replace ? newEntries : [...entries, ...newEntries])
     } else {

@@ -397,7 +397,7 @@ export default function IndocsListPage() {
                 <tbody
                   key={row.rowNum}
                   className="border-t border-gray-200 group cursor-pointer"
-                  onClick={() => navigate(`/indocs/${row.item!.indoc_id}`, { state: { item: row.item } })}
+                  onClick={() => navigate(`/indocs/${encodeURIComponent(row.item!.indoc_id)}`, { state: { item: row.item } })}
                 >
                   <tr className="group-hover:bg-gray-50 transition-colors">
                     <td className="td text-gray-400 text-xs">{row.rowNum}</td>
@@ -459,7 +459,7 @@ export default function IndocsListPage() {
               <tbody
                 key={item.indoc_id}
                 className="border-t border-gray-200 group cursor-pointer"
-                onClick={() => navigate(`/indocs/${item.indoc_id}`, { state: { item } })}
+                onClick={() => navigate(`/indocs/${encodeURIComponent(item.indoc_id)}`, { state: { item } })}
               >
                 <tr className="group-hover:bg-gray-50 transition-colors">
                   <td className="td text-gray-500">{new Date(item.created_at).toLocaleString()}</td>

@@ -141,6 +141,21 @@ info:
     Рекомендуется анализировать значение заголовка `X-RateLimit-Reset` даже в случае успешного запроса
     чтобы замедлять отправку запросов до того, как они будут заблокированы. 
 
+    #### Лимиты для старого XML API  
+    Если у вас есть интеграции с FBox по старому XML протоколу, то в случае превышения лимитов запрос всегда возвращает HTTP status code `200`
+    (также как и в любом другом случае), но в ответе указывается ошибка с excode="429". 
+
+    Пример:
+    ```xml
+    <response xmlns="FBox/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:type="response_err" state="-1">
+        <error code="-20001" excode="429" msg="Превышен лимит req_qnt на суммарное количество запросов. Выполните запрос через 7 секунд"/>
+    </response>
+    ```
+
+    При этом заголовки ответов `X-RateLimit-Reset` и `X-RateLimit-Remaining` формируются как описано выше.
+    Рекомендации по анализу значений заголовков такие же как и для JSON.
+
+
     Предоставляемых лимитов с запасом хватает для типичных сценариев использования API со стороны Заказчика.
     При следовании рекомендациям описанным в настоящей документации не должно возникать ситуаций когда запросы 
     отклоняются по причине превышения лимитов. Исполнитель может временно повысить лимиты по просьбе Заказчика 
@@ -1926,93 +1941,12 @@ paths:
                     enum:
                       - true
                     title: Признак успешного запроса
+                  page_next_token:
+                    $ref: '#/components/schemas/tpage_next_token'
                   items:
                     type: array
                     items:
-                      type: object
-                      properties:
-                        good_id:
-                          type: string
-                          maxLength: 255
-                          description: |-
-                            Код товара присвоенный **Исполнителем** отправлению для пересылки.
-                            Используется для организации складского учета поступивших отправлений.
-                          title: Код товара
-                        descrip:
-                          type: string
-                          description: |-
-                            Описание делается Исполнителем в момент получения неизвестного отправления для пересылки.
-                            После получения заказа для конечного получателя, в описании указывается номер заказа и ФИО клиента
-                          title: Описание поступившего отправления
-                        barcodes:
-                          type: array
-                          items:
-                            type: string
-                          description: |-
-                            При получении неизвестного отправления, Исполнитель указывает **все** штрихкоды на отправлении
-                            которые могут быть использованы для его идентификации.  
-
-                            Заказчик может использовать **любой** из этих штрикодов в атрибуте `orders.forwarded_parcels.barcode` 
-                            при создании заказа.
-                          title: Штрихкоды неизвестного отправления
-                        date:
-                          allOf:
-                            - $ref: '#/components/schemas/datetime'
-                          title: Дата поступления отправления для пересылки на склад Исполнителя
-                        order_id:
-                          type: string
-                          title: Номер заказа в системе Заказчика
-                          description: |-
-                            Заказ для конечного получателя содержащий отправление для пересылки
-                        weight:
-                          type: integer
-                          format: int32
-                          title: Вес отправления, граммы
-                        length:
-                          type: integer
-                          format: int32
-                          title: Длина отправления, миллиметры
-                        width:
-                          type: integer
-                          format: int32
-                          title: Ширина отправления, миллиметры
-                        height:
-                          type: integer
-                          format: int32
-                          title: Высота отправления, миллиметры
-                        photos:
-                          type: array
-                          items:
-                            type: object
-                            properties:
-                              photo_id:
-                                type: integer
-                                format: int32
-                                title: Уникальный идентификатор фото
-                              url:
-                                type: string
-                                title: Url для загрузки фото
-                              created_at:
-                                allOf:
-                                  - $ref: '#/components/schemas/datetime'
-                                title: Дата создания фото
-                              descrip:
-                                type: string
-                                title: Примечание к фото
-                            required:
-                              - photo_id
-                              - url
-                              - created_at
-                          description: |-
-                            При получении неизвестного отправления, Исполнитель делает фото общего вида отправления, 
-                            а также детальные фото всех этикеток которыми отмаркировано отправление.
-                          title: Фото неизвестного отправления
-                      required:
-                        - good_id
-                        - descrip
-                        - barcodes
-                        - date
-                    title: Cписок неизвестных отправлений
+                      $ref: '#/components/schemas/forward_unrecognized_list_resp'
                 required:
                   - success
         default:
@@ -2029,7 +1963,34 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/forward_unrecognized_list_req'
+              type: object
+              properties:
+                page_size:
+                  type: integer
+                  format: int32
+                  title: Максимальное количество объектов на одной странице
+                  default: 1000
+                page_token:
+                  type: string
+                  description: |-
+                    Если параметр не указан, возвращается первая страница.
+                    Рекомендуется передавать значение выходного параметра `page_next_token`, полученное при последнем запросе.
+                    [см. Пагинация в запросах](#paging_desc)
+                  title: Идентификатор страницы c результатами
+                has_order:
+                  type: boolean
+                  description: |-
+                    `true` - выбрать отправления для пересылки на которые уже имеется заказ для конечного получателя
+                    `false` - выбрать отправления для пересылки на которые не создан заказ для конечного получателя
+                  title: На отправление для пересылки Заказчик уже создал заказ
+                from_date:
+                  allOf:
+                    - $ref: '#/components/schemas/datetime'
+                  title: Выбрать отправления для пересылки поступившие не ранее указанного времени
+                to_date:
+                  allOf:
+                    - $ref: '#/components/schemas/datetime'
+                  title: Выбрать отправления для пересылки поступившие не позднее указанного времени
   /goods:
     post:
       operationId: common_interface_good_set
@@ -4617,6 +4578,40 @@ paths:
                   allOf:
                     - $ref: '#/components/schemas/datetime'
                   title: Заказы созданные до указанной даты исключая саму дату
+  /orders/migrate:
+    post:
+      operationId: common_interface_order_migrate
+      summary: Миграция отгруженных заказов из другой системы
+      description: |-
+        
+        ## post /orders/migrate      
+        
+        Запрос предназначен для передачи информации о заказах которые были отгружены в другой системе
+        Данная информация используется Исполнителем для приемки на склад возвращенных отправлений. 
+      parameters: []
+      responses:
+        '200':
+          description: |-
+            The request has succeeded.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/resp_base'
+        default:
+          description: |-
+            An unexpected error response.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      tags:
+        - Заказы
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/order_migrate_req'
   /orders/{order_id}/info:
     get:
       operationId: common_interface_order_info
@@ -4660,6 +4655,10 @@ paths:
                       indoc_id:
                         type: string
                         title: Номер входящего документа в котором был передан заказ
+                      indoc_txt:
+                        type: string
+                        maxLength: 255
+                        title: Примечание к документу
                       origin:
                         type: string
                         description: |-
@@ -4684,6 +4683,25 @@ paths:
                       canceled:
                         type: boolean
                         title: Признак отмены заказа
+                      state:
+                        type: string
+                        enum:
+                          - canceled
+                          - wait
+                          - inwork
+                          - shipped
+                        description: |-
+                          * `canceled` - заказ отменен
+                          * `wait` - заказ не передан в производство 
+                          * `inwork` - заказ в производстве 
+                          * `shipped` - заказ отгружен в службу доставки
+                        title: Состояние обработки заказа
+                      clnt_name:
+                        type: string
+                        title: ФИО клиента
+                      clnt_addr:
+                        type: string
+                        title: Адрес клиента
                       goods:
                         type: array
                         items:
@@ -4703,21 +4721,32 @@ paths:
                               description: |-
                                 см. [Коды и названия товаров](#good_id_desc)
                               title: Наименование товара для склада
+                            qnt:
+                              type: integer
+                              format: int32
+                              title: Количество экземпляров товара
                             declared_value:
                               allOf:
                                 - $ref: '#/components/schemas/money'
-                              title: Оценочная стоимость товара
+                              title: Оценочная стоимость всех экземпляров товара
                             cod:
                               allOf:
                                 - $ref: '#/components/schemas/money'
-                              title: Наложенный платеж
+                              title: Наложенный платеж всех экземпляров товаров
                           required:
                             - good_id
                             - good_type
                             - good_name
+                            - qnt
                             - declared_value
                             - cod
                         title: Список позиций в заказе
+                      plt_info:
+                        allOf:
+                          - $ref: '#/components/schemas/order_out2'
+                        description: |-
+                          Раздел указывается после того как заказ скомплектован, упакован и размещён на паллету.
+                        title: Информация о спаллетированном отправлении
                       outdocs:
                         type: array
                         items:
@@ -4817,6 +4846,7 @@ paths:
                       - delivery_id
                       - delivery_name
                       - canceled
+                      - state
                     title: Информация о выбранном заказе
                 required:
                   - success
@@ -6305,6 +6335,7 @@ components:
                 type: integer
                 format: int32
                 title: Количество копий для печати
+                default: 1
               override:
                 type: boolean
                 title: Перезаписать существующий файл
@@ -6312,7 +6343,6 @@ components:
             required:
               - file_name
               - file_data
-              - copy_qnt
     doc_photo_list_resp:
       type: object
       properties:
@@ -10420,6 +10450,10 @@ components:
             indoc_id:
               type: string
               title: Номер входящего документа в котором был передан заказ
+            indoc_txt:
+              type: string
+              maxLength: 255
+              title: Примечание к документу
             origin:
               type: string
               description: |-
@@ -10444,6 +10478,25 @@ components:
             canceled:
               type: boolean
               title: Признак отмены заказа
+            state:
+              type: string
+              enum:
+                - canceled
+                - wait
+                - inwork
+                - shipped
+              description: |-
+                * `canceled` - заказ отменен
+                * `wait` - заказ не передан в производство 
+                * `inwork` - заказ в производстве 
+                * `shipped` - заказ отгружен в службу доставки
+              title: Состояние обработки заказа
+            clnt_name:
+              type: string
+              title: ФИО клиента
+            clnt_addr:
+              type: string
+              title: Адрес клиента
             goods:
               type: array
               items:
@@ -10463,21 +10516,32 @@ components:
                     description: |-
                       см. [Коды и названия товаров](#good_id_desc)
                     title: Наименование товара для склада
+                  qnt:
+                    type: integer
+                    format: int32
+                    title: Количество экземпляров товара
                   declared_value:
                     allOf:
                       - $ref: '#/components/schemas/money'
-                    title: Оценочная стоимость товара
+                    title: Оценочная стоимость всех экземпляров товара
                   cod:
                     allOf:
                       - $ref: '#/components/schemas/money'
-                    title: Наложенный платеж
+                    title: Наложенный платеж всех экземпляров товаров
                 required:
                   - good_id
                   - good_type
                   - good_name
+                  - qnt
                   - declared_value
                   - cod
               title: Список позиций в заказе
+            plt_info:
+              allOf:
+                - $ref: '#/components/schemas/order_out2'
+              description: |-
+                Раздел указывается после того как заказ скомплектован, упакован и размещён на паллету.
+              title: Информация о спаллетированном отправлении
             outdocs:
               type: array
               items:
@@ -10577,6 +10641,7 @@ components:
             - delivery_id
             - delivery_name
             - canceled
+            - state
           title: Информация о выбранном заказе
     order_json_resp:
       type: object
@@ -10644,6 +10709,74 @@ components:
             * `inwork` - заказ в производстве
             * `shipped` - заказ отгружен в службу доставки
           title: Состояние заказа
+    order_migrate_req:
+      type: object
+      required:
+        - orders
+      properties:
+        orders:
+          type: array
+          items:
+            type: object
+            properties:
+              order_id:
+                type: string
+                title: Номер заказа в системе Заказчика
+              delivery_id:
+                type: integer
+                format: int32
+                description: |-
+                  Как правило служба доставки не имеет значения при приемке возврата 
+                  и указывается Заказчиком только по согласованию с исполнителем. 
+
+                  По умолчанию используется `16 - Служба заказчика`.
+                  см. [Справочник служб доставки](#deliveries)
+                title: Идентификатор службы доставки
+                default: 16
+              barcode:
+                type: string
+                description: |-
+                  Используется Исполнителем для идентификации возвращаемого отправления.
+                  Должен быть глобально уникальным.
+                title: Штрихкод напечатанный на отправлении
+              clnt_name:
+                type: string
+                description: |-
+                  Заполняется Заказчиком если ФИО Клиента напечатано на ярлыке возвращаемого отправления.
+                  Используется Исполнителем для визуальной идентификации возвращаемого отправления.
+                title: ФИО Клиента
+              goods:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    good_id:
+                      type: string
+                      maxLength: 255
+                      description: |-
+                        Товары в возвращаемом отправлении должны быть предварительно зарегистрированы
+                        см. [Коды и названия товаров](#good_id_desc)
+                      title: Код товара в системе Заказчика
+                    qnt:
+                      type: integer
+                      format: int32
+                      title: Кол-во единиц товара в отправлении
+                    good_sn:
+                      type: string
+                      description: |-
+                        При приемке экземпляру будет автоматически назначен указанный серийный номер.
+                        При указании серийного номера количество единиц товара должно быть равно единице. 
+                        см. [Серийные номера](#good_sn_desc)
+                      title: Серийный номер экземпляра товара
+                  required:
+                    - good_id
+                    - qnt
+                title: Список товаров в отправлении
+            required:
+              - order_id
+              - barcode
+              - goods
+          title: Список заказов отгруженных в старой системе
     order_out:
       type: object
       required:
@@ -10883,6 +11016,231 @@ components:
               - declared_value
               - cod
           title: Список вложений в отправление
+    order_out2:
+      type: object
+      required:
+        - barcode
+        - declared_value
+        - cod
+        - plt_id
+        - plt_bar
+        - weight
+        - unit_qnt
+        - goods
+      properties:
+        barcode:
+          type: string
+          title: Штрихкод отправления
+        dispatch_number:
+          type: string
+          title: Трекномер отправления
+        declared_value:
+          allOf:
+            - $ref: '#/components/schemas/money'
+          title: Оценочная стоимость отправления
+        cod:
+          allOf:
+            - $ref: '#/components/schemas/money'
+          title: Наложенный платеж отправления
+        plt_id:
+          type: integer
+          format: int32
+          title: Идентификатор паллеты на котором размещено отправление
+        plt_bar:
+          type: string
+          title: Штрихкод паллеты на котором размещено отправление
+        weight:
+          type: integer
+          format: int32
+          title: Вес отправления, граммы
+        unit_qnt:
+          type: integer
+          format: int32
+          title: Количество мест в отправлении
+        units:
+          type: array
+          items:
+            type: object
+            properties:
+              unit_num:
+                type: integer
+                format: int32
+                description: |-
+                  Нумерация мест в отправлении выполняется строго последовательно начиная с 1
+                title: Порядковый номер места (1, 2...) в отправлении
+              barcode:
+                type: string
+                title: Штрихкод места в отправлении
+              pack_id:
+                type: string
+                title: Идентификатор использованной упаковки
+              pack_name:
+                type: string
+                title: Название использованной упаковки
+              pack_weight:
+                type: integer
+                format: int32
+                title: Вес чистой упаковки без товаров, граммы
+              weight:
+                type: integer
+                format: int32
+                title: Вес места, граммы
+              length:
+                type: integer
+                format: int32
+                title: Длина места, миллиметры
+              width:
+                type: integer
+                format: int32
+                title: Ширина места, миллиметры
+              height:
+                type: integer
+                format: int32
+                title: Высота места, миллиметры
+              ozon_posting_number:
+                type: string
+                title: Номер места в системе маркетплейса Озон
+            required:
+              - unit_num
+              - barcode
+          title: Места отправления
+        dev1:
+          type: object
+          properties:
+            stp_date:
+              allOf:
+                - $ref: '#/components/schemas/date'
+              title: Дата штемпеля
+            mail_type:
+              type: number
+              enum:
+                - 3
+                - 4
+                - 7
+                - 23
+                - 24
+                - 47
+                - 53
+              description: |-
+                * `3` - Бандероль (используется по согласованию с Исполнителем)
+                * `4` - Посылка
+                * `7` - ЕМS (используется по согласованию с Исполнителем)
+                * `23` - Посылка онлайн
+                * `24` - Курьер онлайн
+                * `47` - Посылка 1 класса
+                * `53` - ЕКом (используется по согласованию с Исполнителем)
+              title: Тип корреспонденции
+              default: 4
+            mail_ctg:
+              type: number
+              enum:
+                - 0
+                - 1
+                - 2
+                - 3
+              description: |-
+                Используется по согласованию с Исполнителем
+                * `0` - Простое
+                * `1` - Заказное
+                * `2` - C объявленной ценностью
+                * `3` - Обыкновенное
+              title: Категория почтового отправления
+            mail_mark:
+              type: integer
+              format: int32
+              title: Почтовые отметки
+            orsp_id:
+              type: integer
+              format: int32
+              title: Идентификатор организации сдающей почту в системе Исполнителя
+            blnp_id:
+              type: integer
+              format: int32
+              title: Идентификатор набора почтовых реквизитов в системе Исполнителя
+            mass_rate:
+              allOf:
+                - $ref: '#/components/schemas/money'
+              title: Наземный тариф с НДС
+            ins_rate:
+              allOf:
+                - $ref: '#/components/schemas/money'
+              title: Страховой сбор с НДС
+            air_rate:
+              allOf:
+                - $ref: '#/components/schemas/money'
+              title: Авиа тариф с НДС
+          required:
+            - stp_date
+            - mail_type
+            - mail_ctg
+            - mail_mark
+            - orsp_id
+            - blnp_id
+            - mass_rate
+            - ins_rate
+            - air_rate
+          description: |-
+            Заполняется только для службы доставки почты России (delivery_id = 1)
+          title: Атрибуты отправления почты России
+        goods:
+          type: array
+          items:
+            type: object
+            properties:
+              unit_num:
+                type: integer
+                format: int32
+                description: |-
+                  Нумерация мест в отправлении выполняется строго последовательно начиная с 1
+                title: Порядковый номер места (1, 2...) в отправлении
+              good_id:
+                type: string
+                maxLength: 255
+                description: |-
+                  см. [Коды и названия товаров](#good_id_desc)
+                title: Код товара в системе Заказчика
+              good_name:
+                type: string
+                maxLength: 255
+                description: |-
+                  см. [Коды и названия товаров](#good_id_desc)
+                title: Наименование товара для склада
+              good_type:
+                $ref: '#/components/schemas/tgood_type'
+              good_sn:
+                type: string
+                description: |-
+                  см. [Серийные номера](#good_sn_desc)
+                title: Серийный номер экземпляра товара
+              good_sn0:
+                type: string
+                description: |-
+                  см. [Серийные номера](#good_sn_desc)
+                title: Дополнительный серийный номер экземпляра товара
+              expiry_date:
+                allOf:
+                  - $ref: '#/components/schemas/date'
+                description: |-
+                  см [Учет товаров по срокам годности](#expir_desc)
+                title: Дата окончания срока годности товара
+              declared_value:
+                allOf:
+                  - $ref: '#/components/schemas/money'
+                title: Оценочная стоимость товара
+              cod:
+                allOf:
+                  - $ref: '#/components/schemas/money'
+                title: Наложенный платеж
+            required:
+              - unit_num
+              - good_id
+              - good_name
+              - good_type
+              - declared_value
+              - cod
+          title: Список вложений в отправление
+      description: |-
+        The template for omitting properties.
     orders_cancel:
       type: object
       required:
@@ -12799,6 +13157,7 @@ components:
         - ownerdep_name
         - delivery_id
         - delivery_name
+        - state
         - barcode
         - dispatch_number
         - declared_value
@@ -12847,6 +13206,19 @@ components:
         delivery_name:
           type: string
           title: Название службы доставки
+        state:
+          type: string
+          enum:
+            - canceled
+            - wait
+            - inwork
+            - shipped
+          description: |-
+            * `canceled` - заказ отменен
+            * `wait` - заказ не передан в производство 
+            * `inwork` - заказ в производстве 
+            * `shipped` - заказ отгружен в службу доставки
+          title: Состояние обработки заказа
         barcode:
           type: string
           title: Штрихкод отправления

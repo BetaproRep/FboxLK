@@ -24,8 +24,8 @@ function IndocRow({ indoc, colSpan, navigate }: { indoc: OutdocListItem['indoc']
           <span className="flex items-center gap-1.5 text-xs text-gray-500">
             <span>{new Date(indoc.created_at).toLocaleString()}</span>
             <a
-              href={`/indocs/${indoc.indoc_id}`}
-              onClick={(e) => { e.stopPropagation(); e.preventDefault(); navigate(`/indocs/${indoc.indoc_id}`) }}
+              href={`/indocs/${encodeURIComponent(indoc.indoc_id)}`}
+              onClick={(e) => { e.stopPropagation(); e.preventDefault(); navigate(`/indocs/${encodeURIComponent(indoc.indoc_id)}`) }}
               className="text-primary-600 font-medium hover:underline"
             >
               {indoc.indoc_id}

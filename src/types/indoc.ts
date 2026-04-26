@@ -70,6 +70,7 @@ export interface IndocPhoto {
   created_at: string
   descrip?: string
   good_id?: string
+  order_id?: string
 }
 
 // GET /indocs/{id}/json — type-specific response shapes
@@ -174,3 +175,10 @@ export interface IndocCreateOrdersShipment {
 }
 
 export type IndocCreate = IndocCreateGoodsSupply | IndocCreateGoodsShipment | IndocCreateOrdersShipment
+
+export interface IndocAttribute {
+  attribute_id: number
+  attribute_type: 'string' | 'boolean' | 'int' | 'float' | 'date' | 'datetime' | 'json'
+  attribute_name: string
+  value: string | number | boolean | null
+}
