@@ -6,6 +6,8 @@ import type {
   OutdocPhoto,
   OutdocGood,
   OutdocSerialNumber,
+  OutdocDetailBase,
+  GoodsSupplyOutdoc,
 } from '@/types/outdoc'
 
 export const outdocsApi = {
@@ -14,8 +16,12 @@ export const outdocsApi = {
     return data
   },
 
-  // Возвращает один из многих типов документов (anyOf) — используем unknown
-  get: async (outdocId: number): Promise<unknown> => {
+  get: async (outdocId: number): Promise<OutdocDetailBase> => {
+    const { data } = await apiClient.get(`/outdocs/${outdocId}`)
+    return data
+  },
+
+  getGoodsSupply: async (outdocId: number): Promise<GoodsSupplyOutdoc> => {
     const { data } = await apiClient.get(`/outdocs/${outdocId}`)
     return data
   },
