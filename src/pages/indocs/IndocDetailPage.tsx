@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useParams, useNavigate, useLocation } from 'react-router-dom'
+import { isTextSelected } from '@/utils/selection'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import toast from 'react-hot-toast'
 import { indocsApi } from '@/api/indocs'
@@ -88,7 +89,7 @@ function GoodsTab({ indoc }: { indoc: IndocJson }) {
             <tr
               key={i}
               className="hover:bg-gray-50 cursor-pointer"
-              onClick={() => navigate(`/goods/${encodeURIComponent(item.good_id)}`)}
+              onClick={() => { if (isTextSelected()) return; navigate(`/goods/${encodeURIComponent(item.good_id)}`) }}
             >
               <td className="td font-medium text-primary-600">{item.good_id}</td>
               <td className="td text-gray-700">
@@ -155,7 +156,7 @@ function OrdersTab({ indoc }: { indoc: IndocJson }) {
           <tbody
             key={item.order_id}
             className="border-t border-gray-200 group cursor-pointer"
-            onClick={() => navigate(`/orders/${encodeURIComponent(item.order_id)}`)}
+            onClick={() => { if (isTextSelected()) return; navigate(`/orders/${encodeURIComponent(item.order_id)}`) }}
           >
             <tr className="group-hover:bg-gray-50 transition-colors">
               <td className="td text-gray-500">{new Date(item.created_at).toLocaleString()}</td>
@@ -297,7 +298,7 @@ function OutdocsTab({ outdocs }: { outdocs: NonNullable<WebIndocListItem['outdoc
             <tr
               key={od.outdoc_id}
               className="hover:bg-gray-50 cursor-pointer transition-colors"
-              onClick={() => navigate(`/outdocs/${od.outdoc_id}`)}
+              onClick={() => { if (isTextSelected()) return; navigate(`/outdocs/${od.outdoc_id}`) }}
             >
               <td className="td text-gray-500">{new Date(od.created_at).toLocaleString()}</td>
               <td className="td text-gray-500">{new Date(od.outdoc_date).toLocaleDateString()}</td>

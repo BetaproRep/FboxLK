@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate, Link } from 'react-router-dom'
+import { isTextSelected } from '@/utils/selection'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import toast from 'react-hot-toast'
 import { outdocsApi } from '@/api/outdocs'
@@ -12,19 +13,27 @@ import EmptyState from '@/components/ui/EmptyState'
 import { dict, dictEnum } from '@/constants/dict'
 import Hint from '@/components/ui/Hint'
 import PropList from '@/components/ui/PropList'
-import type { GoodsSupplyGoodItem, GoodsExpiryItem, GpltOut, GpltBox, CorrectionGoodItem, OrderOutItem, OutdocOrderItem } from '@/types/outdoc'
+import JsonViewer from '@/components/ui/JsonViewer'
+import type { IndocAttribute } from '@/types/indoc'
+import type { GoodsSupplyGoodItem, GoodsExpiryItem, GpltOut, GpltBox, CorrectionGoodItem, OrderOutItem, OutdocOrderItem, ReturnOrderEntry, ReturnGoodItem, OutdocGood, OutdocSerialNumber, OutdocPhoto } from '@/types/outdoc'
 import type { PropItem } from '@/components/ui/PropList'
+import { OutdocsBlock, OutdocsRow } from '@/components/ui/OutdocsRow'
 
 // ─── Вкладки ────────────────────────────────────────────────────────────────
 
-type CoreTab = 'goods' | 'sn' | 'files' | 'photos'
-type TypeTab = 'supply_goods' | 'supply_expiry' | 'shipment_pallets' | 'correction_goods' | 'shipments' | 'outdoc_orders'
+type CoreTab = 'goods' | 'sn' | 'attrs' | 'files' | 'photos' | 'json'
+type TypeTab = 'supply_goods' | 'supply_expiry' | 'shipment_pallets' | 'correction_goods' | 'shipments' | 'outdoc_orders' | 'return_orders'
 type Tab = CoreTab | TypeTab
 
 const SHIPMENT_TYPES      = new Set(['goods_shipment', 'goods_shipment_ready'])
 const ORDERS_TYPES        = new Set(['orders_pallet', 'orders_shipment'])
 const OUTDOC_ORDERS_TYPES = new Set(['orders_receiving', 'orders_deficit', 'orders_production_start', 'orders_cancel', 'orders_full_return', 'orders_payment', 'orders_payment_transfer', 'orders_shipment_refusal'])
 const PAYMENT_TYPES       = new Set(['orders_payment', 'orders_payment_transfer'])
+const RETURN_TYPES        = new Set(['orders_part_return', 'orders_client_return'])
+
+const GOODS_MOVEMENT_TYPES = new Set(['orders_full_return', 'goods_correction', 'orders_shipment', 'goods_supply', 'goods_shipment', 'orders_part_return', 'orders_client_return', 'goods_from_long_storage', 'goods_to_long_storage'])
+const FILES_TYPES          = new Set(['goods_shipment', 'goods_shipment_ready', 'goods_shipment_start'])
+const PHOTOS_TYPES         = new Set(['goods_correction', 'goods_supply', 'goods_supply_start', 'goods_shipment', 'goods_shipment_ready', 'goods_shipment_start', 'orders_client_return', 'orders_full_return', 'orders_part_return', 'orders_shipment', 'orders_pallet', 'orders_shipment_refusal'])
 
 // ─── Компоненты вкладок ──────────────────────────────────────────────────────
 
@@ -115,7 +124,7 @@ function SupplyGoodsTab({ goods }: { goods: GoodsSupplyGoodItem[] }) {
               <tr
                 key={i}
                 className="hover:bg-gray-50 cursor-pointer"
-                onClick={() => navigate(`/goods/${encodeURIComponent(item.good_id)}`)}
+                onClick={() => { if (isTextSelected()) return; navigate(`/goods/${encodeURIComponent(item.good_id)}`) }}
               >
                 <td className="td font-medium text-primary-600">{item.good_id}</td>
                 <td className="td text-gray-700">
@@ -206,7 +215,7 @@ function ExpiryTab({ items }: { items: GoodsExpiryItem[] }) {
             <tr
               key={i}
               className="hover:bg-gray-50 cursor-pointer"
-              onClick={() => navigate(`/goods/${encodeURIComponent(item.good_id)}`)}
+              onClick={() => { if (isTextSelected()) return; navigate(`/goods/${encodeURIComponent(item.good_id)}`) }}
             >
               <td className="td font-medium text-primary-600">{item.good_id}</td>
               <td className="td text-gray-700">
@@ -288,7 +297,7 @@ function CorrectionGoodsTab({ goods }: { goods: CorrectionGoodItem[] }) {
             <tr
               key={i}
               className="hover:bg-gray-50 cursor-pointer"
-              onClick={() => navigate(`/goods/${encodeURIComponent(item.good_id)}`)}
+              onClick={() => { if (isTextSelected()) return; navigate(`/goods/${encodeURIComponent(item.good_id)}`) }}
             >
               <td className="td font-medium text-primary-600">{item.good_id}</td>
               <td className="td text-gray-700">
@@ -389,18 +398,18 @@ function OutdocOrdersTab({ orders, outdocType }: { orders: OutdocOrderItem[]; ou
         </thead>
         {sorted.map((item) => {
           const outdocOrd = outdocOrdersMap.get(item.order_id)
-          const extraInfo = outdocType === 'orders_deficit'
-            ? [outdocOrd?.error_code, outdocOrd?.error_descrip].filter(Boolean).join(' ')
+          const extraProps: PropItem[] = outdocType === 'orders_deficit'
+            ? [{ dictKey: 'error_descrip',        value: [outdocOrd?.error_code,     outdocOrd?.error_descrip].filter(Boolean).join(' ')        || undefined, valueColor: 'red'    }]
             : outdocType === 'orders_cancel'
-            ? [outdocOrd?.cancel_reason, outdocOrd?.cancel_reason_descrip].filter(Boolean).join(' ')
+            ? [{ dictKey: 'cancel_reason_descrip', value: [outdocOrd?.cancel_reason, outdocOrd?.cancel_reason_descrip].filter(Boolean).join(' ') || undefined, valueColor: 'yellow' }]
             : outdocType === 'orders_full_return'
-            ? [outdocOrd?.ret_reason, outdocOrd?.ret_reason_descrip].filter(Boolean).join(' ')
-            : ''
+            ? [{ dictKey: 'ret_reason_descrip',    value: [outdocOrd?.ret_reason,    outdocOrd?.ret_reason_descrip].filter(Boolean).join(' ')    || undefined, valueColor: 'yellow' }]
+            : []
           return (
             <tbody
               key={item.order_id}
               className="border-t border-gray-200 group cursor-pointer"
-              onClick={() => navigate(`/orders/${encodeURIComponent(item.order_id)}`)}
+              onClick={() => { if (isTextSelected()) return; navigate(`/orders/${encodeURIComponent(item.order_id)}`) }}
             >
               <tr className="group-hover:bg-gray-50 transition-colors">
                 <td className="td text-gray-500">{new Date(item.created_at).toLocaleString('ru-RU')}</td>
@@ -412,31 +421,11 @@ function OutdocOrdersTab({ orders, outdocType }: { orders: OutdocOrderItem[]; ou
                 {showClntDate && <td className="td text-gray-500">{outdocOrd?.clnt_date ? new Date(outdocOrd.clnt_date).toLocaleDateString('ru-RU') : '—'}</td>}
                 {showFileDate && <td className="td text-gray-500">{outdocOrd?.file_date ? new Date(outdocOrd.file_date).toLocaleDateString('ru-RU') : '—'}</td>}
               </tr>
-              {extraInfo && (
+              <OutdocsRow outdocs={item.outdocs} colSpan={COL_COUNT} />
+              {extraProps[0]?.value && (
                 <tr>
                   <td colSpan={COL_COUNT} className="px-4 pt-0 pb-1 bg-white group-hover:bg-gray-50 transition-colors">
-                    <span className="text-sm text-amber-700">{extraInfo}</span>
-                  </td>
-                </tr>
-              )}
-              {item.outdocs && item.outdocs.length > 0 && (
-                <tr>
-                  <td colSpan={COL_COUNT} className="px-4 pt-0 pb-1 bg-white group-hover:bg-gray-50 transition-colors">
-                    <div className="flex flex-wrap gap-x-6 gap-y-1">
-                      {item.outdocs.map((od) => (
-                        <span key={od.outdoc_id} className="flex items-center gap-1.5 text-xs text-gray-500">
-                          <span>{new Date(od.created_at).toLocaleString('ru-RU')}</span>
-                          <a
-                            href={`/outdocs/${od.outdoc_id}`}
-                            onClick={(e) => { e.stopPropagation(); e.preventDefault(); navigate(`/outdocs/${od.outdoc_id}`) }}
-                            className="text-primary-600 font-medium hover:underline"
-                          >
-                            {od.outdoc_id}
-                          </a>
-                          <span>{od.outdoc_type_descrip}</span>
-                        </span>
-                      ))}
-                    </div>
+                    <PropList items={extraProps} className="text-sm text-gray-500" />
                   </td>
                 </tr>
               )}
@@ -498,7 +487,7 @@ function ShipmentsTab({ orders, outdocType }: { orders: OrderOutItem[]; outdocTy
             <tr
               key={i}
               className="hover:bg-gray-50 cursor-pointer"
-              onClick={() => navigate(`/orders/${encodeURIComponent(item.order_id)}`)}
+              onClick={() => { if (isTextSelected()) return; navigate(`/orders/${encodeURIComponent(item.order_id)}`) }}
             >
               {showPltId    && <td className="td text-gray-500">{item.plt_id ?? '—'}</td>}
               <td className="td font-medium text-primary-600">{item.order_id}</td>
@@ -578,7 +567,7 @@ function PalletsTab({ pallets }: { pallets: GpltOut[] }) {
                       <tr
                         key={i}
                         className="hover:bg-gray-50 cursor-pointer"
-                        onClick={() => navigate(`/goods/${encodeURIComponent(g.good_id)}`)}
+                        onClick={() => { if (isTextSelected()) return; navigate(`/goods/${encodeURIComponent(g.good_id)}`) }}
                       >
                         <td className="td font-medium text-primary-600">{g.good_id}</td>
                         <td className="td text-gray-700">
@@ -603,6 +592,428 @@ function PalletsTab({ pallets }: { pallets: GpltOut[] }) {
   )
 }
 
+function ReturnedOrdersTab({ orders, outdocType }: { orders: ReturnOrderEntry[]; outdocType: string }) {
+  const navigate = useNavigate()
+  const isClientReturn = outdocType === 'orders_client_return'
+
+  const orderIds = useMemo(
+    () => [...new Set(orders.map((o) => o.order_id).filter((id): id is string => !!id))],
+    [orders],
+  )
+
+  const allGoodIds = useMemo(
+    () => [...new Set(orders.flatMap((o) => o.goods.map((g: ReturnGoodItem) => g.good_id)))],
+    [orders],
+  )
+
+  const { data: ordersData } = useQuery({
+    queryKey: ['orders-by-ids', orderIds],
+    queryFn: () => ordersApi.list({ order_ids: orderIds }),
+    enabled: orderIds.length > 0,
+  })
+
+  const { data: goodsData, isLoading: goodsLoading } = useQuery({
+    queryKey: ['goods-by-ids', allGoodIds],
+    queryFn: () => goodsApi.list({ good_ids: allGoodIds }),
+    enabled: allGoodIds.length > 0,
+  })
+
+  const ordersMap = useMemo(
+    () => new Map(ordersData?.items.map((o) => [o.order_id, o])),
+    [ordersData],
+  )
+
+  const goodsMap = useMemo(
+    () => new Map(goodsData?.items.map((g) => [g.good_id, g.good_name])),
+    [goodsData],
+  )
+
+  const showExpiry = orders.some((o) => o.goods.some((g) => g.expiry_date))
+  const showSn     = orders.some((o) => o.goods.some((g) => g.good_sn))
+
+  if (orders.length === 0) return <div className="card"><EmptyState title="Нет данных о возвратах" /></div>
+
+  if (goodsLoading && allGoodIds.length > 0) {
+    return <div className="flex justify-center py-8"><Spinner className="w-6 h-6 text-primary-600" /></div>
+  }
+
+  return (
+    <div className="space-y-4">
+      {orders.map((order, i) => {
+        const orderInfo = order.order_id ? ordersMap.get(order.order_id) : undefined
+
+        const orderProps: PropItem[] = order.order_id ? [
+          { dictKey: 'order_id',      value: order.order_id, href: `/orders/${encodeURIComponent(order.order_id)}` },
+          { dictKey: 'created_at',    value: orderInfo?.created_at ? new Date(orderInfo.created_at).toLocaleString('ru-RU') : undefined },
+          { dictKey: 'clnt_name',     value: orderInfo?.clnt_name },
+          { dictKey: 'delivery_name', value: orderInfo?.delivery_name },
+        ] : []
+
+        const retProps: PropItem[] = isClientReturn ? [
+          { dictKey: 'return_barcode', value: order.return_barcode },
+          { dictKey: 'parcel_barcode', value: order.parcel_barcode },
+        ] : []
+
+        const propItems: PropItem[] = [...orderProps, ...retProps]
+
+        return (
+          <div key={i} className="card overflow-hidden">
+            {propItems.length > 0 && (
+              <div className="px-4 py-3 border-b border-gray-100">
+                <PropList items={propItems} className="text-sm text-gray-500" />
+              </div>
+            )}
+
+            {orderInfo?.outdocs && orderInfo.outdocs.length > 0 && (
+              <div className="px-4 py-2 border-b border-gray-100">
+                <OutdocsBlock outdocs={orderInfo.outdocs} />
+              </div>
+            )}
+
+            <table className="min-w-full divide-y divide-gray-200 text-sm">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="th"><Hint text={dict('good_id__ret', 'hint')}>{dict('good_id__ret', 'short')}</Hint></th>
+                  <th className="th"><Hint text={dict('good_name', 'hint')}>{dict('good_name', 'short')}</Hint></th>
+                  <th className="th"><Hint text={dict('qual_type', 'hint')}>{dict('qual_type', 'short')}</Hint></th>
+                  {showExpiry && <th className="th"><Hint text={dict('expiry_date', 'hint')}>{dict('expiry_date', 'short')}</Hint></th>}
+                  {showSn     && <th className="th"><Hint text={dict('good_sn', 'hint')}>{dict('good_sn', 'short')}</Hint></th>}
+                  <th className="th text-right"><Hint text={dict('stock_qnt', 'hint', 'ret')}>{dict('stock_qnt', 'short', 'ret')}</Hint></th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-100">
+                {order.goods.map((g, j) => (
+                  <tr
+                    key={j}
+                    className="hover:bg-gray-50 cursor-pointer transition-colors"
+                    onClick={() => { if (isTextSelected()) return; navigate(`/goods/${encodeURIComponent(g.good_id)}`) }}
+                  >
+                    <td className="td font-medium text-primary-600">{g.good_id}</td>
+                    <td className="td text-gray-500">{goodsMap.get(g.good_id) ?? '—'}</td>
+                    <td className="td text-gray-500">{dictEnum('qual_type', g.qual_type)}</td>
+                    {showExpiry && <td className="td text-gray-500">{g.expiry_date ? new Date(g.expiry_date).toLocaleDateString('ru-RU') : '—'}</td>}
+                    {showSn     && <td className="td text-gray-500">{g.good_sn ?? '—'}</td>}
+                    <td className="td text-right font-medium">{g.stock_qnt}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
+function OutdocPhotosTab({ photos }: { photos: OutdocPhoto[] }) {
+  const navigate = useNavigate()
+
+  const goodIds = [...new Set(photos.map((p) => p.good_id).filter(Boolean) as string[])]
+
+  const { data: goodsData } = useQuery({
+    queryKey: ['goods-by-ids', goodIds],
+    queryFn: () => goodsApi.list({ good_ids: goodIds }),
+    enabled: goodIds.length > 0,
+  })
+
+  const goodsMap = new Map(goodsData?.items.map((g) => [g.good_id, g.good_name]))
+
+  if (photos.length === 0) return <div className="card p-6"><EmptyState title="Фото нет" /></div>
+
+  return (
+    <div className="card p-6">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+        {photos.map((p) => (
+          <div key={p.photo_id} className="flex flex-col rounded-lg border border-gray-200 overflow-hidden">
+            <a href={p.url} target="_blank" rel="noreferrer" className="block">
+              <img
+                src={p.url}
+                alt={p.descrip ?? 'фото'}
+                className="w-full aspect-square object-cover hover:opacity-90 transition-opacity"
+              />
+            </a>
+            {(p.descrip || p.good_id || p.order_id) && (
+              <div className="px-2 py-1.5 flex flex-col gap-0.5 text-xs bg-white">
+                {p.descrip && (
+                  <span className="text-gray-500 truncate" title={p.descrip}>{p.descrip}</span>
+                )}
+                {p.good_id && (
+                  <button
+                    className="text-left text-primary-600 hover:underline truncate"
+                    onClick={() => navigate(`/goods/${encodeURIComponent(p.good_id!)}`)}
+                    title={goodsMap.get(p.good_id) ?? p.good_id}
+                  >
+                    {p.good_id}{goodsMap.get(p.good_id) ? ` · ${goodsMap.get(p.good_id)}` : ''}
+                  </button>
+                )}
+                {p.order_id && (
+                  <button
+                    className="text-left text-primary-600 hover:underline truncate"
+                    onClick={() => navigate(`/orders/${encodeURIComponent(p.order_id!)}`)}
+                  >
+                    {p.order_id}
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+type SnMovementSortKey = 'good_sn' | 'good_id' | 'good_name' | 'inout' | 'qual_type' | 'order_id'
+
+function SerialNumbersTab({ outdocId }: { outdocId: number }) {
+  const navigate = useNavigate()
+  const [sortKey, setSortKey] = useState<SnMovementSortKey>('good_sn')
+  const [sortDir, setSortDir] = useState<SortDir>('asc')
+  const snSearchKey = `outdoc-sn-search-${outdocId}`
+  const [search, setSearch] = useState(() => sessionStorage.getItem(snSearchKey) ?? '')
+
+  const { data: snData, isLoading: snLoading } = useQuery({
+    queryKey: ['outdoc-sn', outdocId],
+    queryFn: () => outdocsApi.getSerialNumbers(outdocId),
+  })
+
+  const items: OutdocSerialNumber[] = snData?.good_sn ?? []
+
+  const goodIds = useMemo(() => [...new Set(items.map((s) => s.good_id))], [items])
+
+  const { data: goodsData, isLoading: namesLoading } = useQuery({
+    queryKey: ['goods-by-ids', goodIds],
+    queryFn: () => goodsApi.list({ good_ids: goodIds }),
+    enabled: goodIds.length > 0,
+  })
+
+  const goodsMap = useMemo(
+    () => new Map(goodsData?.items.map((g) => [g.good_id, g.good_name])),
+    [goodsData],
+  )
+
+  function handleSort(k: SnMovementSortKey) {
+    if (k === sortKey) setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'))
+    else { setSortKey(k); setSortDir('asc') }
+  }
+
+  const inoutLabel = (v: 1 | -1) => (v === 1 ? 'Приход' : 'Расход')
+
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase()
+    const base = q
+      ? items.filter((item) =>
+          [item.good_sn, item.good_id, goodsMap.get(item.good_id), inoutLabel(item.inout), dictEnum('qual_type', item.qual_type), item.order_id].some(
+            (v) => v != null && String(v).toLowerCase().includes(q),
+          ),
+        )
+      : items
+    return [...base].sort((a, b) => {
+      let va: string | number
+      let vb: string | number
+      if (sortKey === 'good_name') {
+        va = goodsMap.get(a.good_id) ?? ''
+        vb = goodsMap.get(b.good_id) ?? ''
+      } else if (sortKey === 'inout') {
+        va = a.inout; vb = b.inout
+      } else if (sortKey === 'qual_type') {
+        va = dictEnum('qual_type', a.qual_type)
+        vb = dictEnum('qual_type', b.qual_type)
+      } else {
+        va = (a[sortKey as keyof OutdocSerialNumber] as string | undefined) ?? ''
+        vb = (b[sortKey as keyof OutdocSerialNumber] as string | undefined) ?? ''
+      }
+      const cmp = typeof va === 'number' && typeof vb === 'number'
+        ? va - vb
+        : String(va).localeCompare(String(vb), 'ru')
+      return sortDir === 'asc' ? cmp : -cmp
+    })
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [items, search, sortKey, sortDir, goodsMap])
+
+  if (snLoading || (namesLoading && goodIds.length > 0)) {
+    return <div className="flex justify-center py-8"><Spinner className="w-6 h-6 text-primary-600" /></div>
+  }
+
+  const sortProps = { current: sortKey, dir: sortDir, onSort: handleSort }
+
+  return (
+    <>
+      <div className="mb-3">
+        <input
+          className="input w-56"
+          placeholder="Поиск по списку..."
+          value={search}
+          onChange={(e) => { setSearch(e.target.value); sessionStorage.setItem(snSearchKey, e.target.value) }}
+        />
+      </div>
+      <div className="card overflow-hidden">
+        {filtered.length === 0 ? (
+          <EmptyState title="Серийных номеров нет" />
+        ) : (
+          <table className="min-w-full divide-y divide-gray-200 text-sm">
+            <thead className="bg-gray-50">
+              <tr>
+                <SortTh sortKey="good_sn"   label={dict('good_sn', 'short')}   hint={dict('good_sn', 'hint')}   {...sortProps} />
+                <SortTh sortKey="good_id"   label={dict('good_id', 'short')}   hint={dict('good_id', 'hint')}   {...sortProps} />
+                <SortTh sortKey="good_name" label={dict('good_name', 'short')} hint={dict('good_name', 'hint')} {...sortProps} />
+                <SortTh sortKey="inout"     label={dict('inout', 'short')}     hint={dict('inout', 'hint')}     {...sortProps} />
+                <SortTh sortKey="qual_type" label={dict('qual_type', 'short')} hint={dict('qual_type', 'hint')} {...sortProps} />
+                <SortTh sortKey="order_id"  label={dict('order_id', 'short')}  hint={dict('order_id', 'hint')}  {...sortProps} />
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-100">
+              {filtered.map((sn, i) => (
+                <tr
+                  key={i}
+                  className="hover:bg-gray-50 cursor-pointer transition-colors"
+                  onClick={() => { if (isTextSelected()) return; navigate(`/goods/${encodeURIComponent(sn.good_id)}`) }}
+                >
+                  <td className="td font-mono text-sm">{sn.good_sn}</td>
+                  <td className="td font-medium text-primary-600">{sn.good_id}</td>
+                  <td className="td text-gray-700">
+                    {goodsMap.get(sn.good_id) ?? <span className="text-gray-400 italic">—</span>}
+                  </td>
+                  <td className="td">
+                    <span className={`badge ${sn.inout === 1 ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                      {inoutLabel(sn.inout)}
+                    </span>
+                  </td>
+                  <td className="td text-gray-500">{dictEnum('qual_type', sn.qual_type)}</td>
+                  <td className="td">
+                    {sn.order_id
+                      ? <Link to={`/orders/${encodeURIComponent(sn.order_id)}`} onClick={(e) => e.stopPropagation()} className="text-primary-600 font-medium hover:underline">{sn.order_id}</Link>
+                      : <span className="text-gray-400">—</span>}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
+    </>
+  )
+}
+
+type GoodsMovementSortKey = 'good_id' | 'good_name' | 'good_state' | 'qual_type' | 'qnt'
+
+function GoodsMovementTab({ outdocId }: { outdocId: number }) {
+  const navigate = useNavigate()
+  const [sortKey, setSortKey] = useState<GoodsMovementSortKey>('good_id')
+  const [sortDir, setSortDir] = useState<SortDir>('asc')
+  const goodsSearchKey = `outdoc-goods-search-${outdocId}`
+  const [search, setSearch] = useState(() => sessionStorage.getItem(goodsSearchKey) ?? '')
+
+  const { data: outdocGoodsData, isLoading: outdocLoading } = useQuery({
+    queryKey: ['outdoc-goods', outdocId],
+    queryFn: () => outdocsApi.getGoods(outdocId),
+  })
+
+  const goods: OutdocGood[] = outdocGoodsData?.goods ?? []
+
+  const goodIds = useMemo(() => [...new Set(goods.map((g) => g.good_id))], [goods])
+
+  const { data: goodsData, isLoading: namesLoading } = useQuery({
+    queryKey: ['goods-by-ids', goodIds],
+    queryFn: () => goodsApi.list({ good_ids: goodIds }),
+    enabled: goodIds.length > 0,
+  })
+
+  const goodsMap = useMemo(
+    () => new Map(goodsData?.items.map((g) => [g.good_id, g.good_name])),
+    [goodsData],
+  )
+
+  function handleSort(k: GoodsMovementSortKey) {
+    if (k === sortKey) setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'))
+    else { setSortKey(k); setSortDir('asc') }
+  }
+
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase()
+    const base = q
+      ? goods.filter((item) =>
+          [item.good_id, goodsMap.get(item.good_id), dictEnum('good_state', item.good_state), dictEnum('qual_type', item.qual_type)].some(
+            (v) => v != null && String(v).toLowerCase().includes(q),
+          ),
+        )
+      : goods
+    return [...base].sort((a, b) => {
+      const va: string | number = sortKey === 'good_name' ? (goodsMap.get(a.good_id) ?? '') : a[sortKey as keyof OutdocGood] ?? ''
+      const vb: string | number = sortKey === 'good_name' ? (goodsMap.get(b.good_id) ?? '') : b[sortKey as keyof OutdocGood] ?? ''
+      const cmp = typeof va === 'number' && typeof vb === 'number'
+        ? va - vb
+        : String(va).localeCompare(String(vb), 'ru')
+      return sortDir === 'asc' ? cmp : -cmp
+    })
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [goods, search, sortKey, sortDir, goodsMap])
+
+  if (outdocLoading || (namesLoading && goodIds.length > 0)) {
+    return <div className="flex justify-center py-8"><Spinner className="w-6 h-6 text-primary-600" /></div>
+  }
+
+  const sortProps = { current: sortKey, dir: sortDir, onSort: handleSort }
+
+  return (
+    <>
+      <div className="mb-3">
+        <input
+          className="input w-56"
+          placeholder="Поиск по списку..."
+          value={search}
+          onChange={(e) => { setSearch(e.target.value); sessionStorage.setItem(goodsSearchKey, e.target.value) }}
+        />
+      </div>
+      <div className="card overflow-hidden">
+        {filtered.length === 0 ? (
+          <EmptyState title="Нет данных о товарах" />
+        ) : (
+          <table className="min-w-full divide-y divide-gray-200 text-sm">
+            <thead className="bg-gray-50">
+              <tr>
+                <SortTh sortKey="good_id"    label={dict('good_id', 'short')}    hint={dict('good_id', 'hint')}    {...sortProps} />
+                <SortTh sortKey="good_name"  label={dict('good_name', 'short')}  hint={dict('good_name', 'hint')}  {...sortProps} />
+                <SortTh sortKey="good_state" label={dict('good_state', 'short')} hint={dict('good_state', 'hint')} {...sortProps} />
+                <SortTh sortKey="qual_type"  label={dict('qual_type', 'short')}  hint={dict('qual_type', 'hint')}  {...sortProps} />
+                <SortTh sortKey="qnt"        label={dict('qnt', 'short')}        hint={dict('qnt', 'hint')}        {...sortProps} className="text-right" />
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-100">
+              {filtered.map((g, i) => (
+                <tr
+                  key={i}
+                  className="hover:bg-gray-50 cursor-pointer transition-colors"
+                  onClick={() => { if (isTextSelected()) return; navigate(`/goods/${encodeURIComponent(g.good_id)}`) }}
+                >
+                  <td className="td font-medium text-primary-600">{g.good_id}</td>
+                  <td className="td text-gray-700">
+                    {goodsMap.get(g.good_id) ?? <span className="text-gray-400 italic">—</span>}
+                  </td>
+                  <td className="td text-gray-500">{dictEnum('good_state', g.good_state)}</td>
+                  <td className="td text-gray-500">{dictEnum('qual_type', g.qual_type)}</td>
+                  <td className="td text-right font-medium">{g.qnt}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
+    </>
+  )
+}
+
+function getDefaultTab(outdocType: string): Tab {
+  if (outdocType === 'goods_supply')             return 'supply_goods'
+  if (SHIPMENT_TYPES.has(outdocType))            return 'shipment_pallets'
+  if (outdocType === 'goods_correction')         return 'correction_goods'
+  if (ORDERS_TYPES.has(outdocType))              return 'shipments'
+  if (OUTDOC_ORDERS_TYPES.has(outdocType))       return 'outdoc_orders'
+  if (RETURN_TYPES.has(outdocType))              return 'return_orders'
+  if (GOODS_MOVEMENT_TYPES.has(outdocType))      return 'goods'
+  return 'attrs'
+}
+
 // ─── Основной компонент ──────────────────────────────────────────────────────
 
 export default function OutdocDetailPage() {
@@ -620,30 +1031,21 @@ export default function OutdocDetailPage() {
 
   const outdocType = detail?.outdoc_type
 
-  const initialTab: Tab = (sessionStorage.getItem(tabKey) as Tab | null)
-    ?? (outdocType === 'goods_supply'              ? 'supply_goods'
-      : SHIPMENT_TYPES.has(outdocType ?? '')       ? 'shipment_pallets'
-      : outdocType === 'goods_correction'          ? 'correction_goods'
-      : ORDERS_TYPES.has(outdocType ?? '')         ? 'shipments'
-      : OUTDOC_ORDERS_TYPES.has(outdocType ?? '')  ? 'outdoc_orders'
-      : 'goods')
-  const [tab, setTab] = useState<Tab>(initialTab)
+  const [tabOverride, setTabOverride] = useState<Tab | null>(
+    () => sessionStorage.getItem(tabKey) as Tab | null,
+  )
+  const tab: Tab = tabOverride ?? (outdocType ? getDefaultTab(outdocType) : 'attrs')
 
   function handleSetTab(t: Tab) {
     sessionStorage.setItem(tabKey, t)
-    setTab(t)
+    setTabOverride(t)
   }
 
-  const { data: goodsData } = useQuery({
-    queryKey: ['outdoc-goods', outdocId],
-    queryFn: () => outdocsApi.getGoods(outdocId),
-    enabled: tab === 'goods',
-  })
 
-  const { data: snData } = useQuery({
-    queryKey: ['outdoc-sn', outdocId],
-    queryFn: () => outdocsApi.getSerialNumbers(outdocId),
-    enabled: tab === 'sn',
+  const { data: attrsData } = useQuery({
+    queryKey: ['outdoc-attrs', outdocId],
+    queryFn: () => outdocsApi.getAttributes(outdocId),
+    enabled: tab === 'attrs',
   })
 
   const { data: filesData } = useQuery({
@@ -693,6 +1095,10 @@ export default function OutdocDetailPage() {
       ? ((d?.order_ids as string[] | undefined) ?? []).map((id) => ({ order_id: id }))
       : (d?.orders as OutdocOrderItem[] | undefined) ?? []
     : []
+
+  const returnOrders: ReturnOrderEntry[] = RETURN_TYPES.has(outdocType ?? '')
+    ? (d?.orders as ReturnOrderEntry[] | undefined) ?? []
+    : []
   const payNum                 = d?.pay_num                   as string | undefined
   const payDate                = d?.pay_date                  as string | undefined
   const ordersShipmentOutdocId = d?.orders_shipment_outdoc_id as number | undefined
@@ -711,11 +1117,16 @@ export default function OutdocDetailPage() {
       ? `Скорректированные товары (+${corrPlus})`
       : `Скорректированные товары (${corrMinus})`
 
+  const ot = outdocType ?? ''
   const coreTabs: Array<{ id: Tab; label: string }> = [
-    { id: 'goods',  label: 'Движение товаров' },
-    { id: 'sn',     label: 'Движение серийных номеров' },
-    { id: 'files',  label: 'Файлы' },
-    { id: 'photos', label: 'Фото' },
+    ...(GOODS_MOVEMENT_TYPES.has(ot) ? [
+      { id: 'goods' as Tab, label: 'Движение товаров' },
+      { id: 'sn'    as Tab, label: 'Движение серийных номеров' },
+    ] : []),
+    { id: 'attrs' as Tab, label: 'Атрибуты' },
+    ...(FILES_TYPES.has(ot)   ? [{ id: 'files'  as Tab, label: 'Файлы' }]  : []),
+    ...(PHOTOS_TYPES.has(ot)  ? [{ id: 'photos' as Tab, label: 'Фото' }]   : []),
+    { id: 'json' as Tab, label: 'JSON' },
   ]
 
   const tabs: Array<{ id: Tab; label: string }> = [
@@ -726,7 +1137,7 @@ export default function OutdocDetailPage() {
       ] : []),
     ] : []),
     ...(SHIPMENT_TYPES.has(outdocType ?? '') ? [
-      { id: 'shipment_pallets' as Tab, label: `Короба для отгрузки (${palletsCount}/${boxesCount}/${palletsTotal})` },
+      { id: 'shipment_pallets' as Tab, label: `Паллеты/короба/товары для отгрузки (${palletsCount}/${boxesCount}/${palletsTotal})` },
     ] : []),
     ...(outdocType === 'goods_correction' ? [
       { id: 'correction_goods' as Tab, label: corrLabel },
@@ -736,6 +1147,9 @@ export default function OutdocDetailPage() {
     ] : []),
     ...(OUTDOC_ORDERS_TYPES.has(outdocType ?? '') ? [
       { id: 'outdoc_orders' as Tab, label: `Заказы (${outdocOrders.length})` },
+    ] : []),
+    ...(RETURN_TYPES.has(outdocType ?? '') ? [
+      { id: 'return_orders' as Tab, label: `Возвращённые заказы (${returnOrders.length})` },
     ] : []),
     ...coreTabs,
   ]
@@ -768,7 +1182,7 @@ export default function OutdocDetailPage() {
               { dictKey: 'plt_id',                  value: topPltId != null ? String(topPltId) : undefined },
               { dictKey: 'pay_num',                      value: payNum, newLine: true },
               { dictKey: 'pay_date',                     value: payDate ? new Date(payDate).toLocaleDateString('ru-RU') : undefined },
-              { dictKey: 'orders_shipment_outdoc_id',    value: ordersShipmentOutdocId != null ? String(ordersShipmentOutdocId) : undefined, newLine: true },
+              { dictKey: 'orders_shipment_outdoc_id',    value: ordersShipmentOutdocId != null ? String(ordersShipmentOutdocId) : undefined, newLine: true, href: ordersShipmentOutdocId != null ? `/outdocs/${ordersShipmentOutdocId}` : undefined },
             ]} />
             {common?.indoc_id && (
               <p className="text-sm text-gray-500 mt-1">
@@ -790,11 +1204,6 @@ export default function OutdocDetailPage() {
               </p>
             )}
           </>
-        }
-        actions={
-          <button className="btn-secondary" onClick={() => navigate('/outdocs')}>
-            ← Назад
-          </button>
         }
       />
 
@@ -820,67 +1229,37 @@ export default function OutdocDetailPage() {
       {tab === 'correction_goods'  && <CorrectionGoodsTab goods={correctionGoods} />}
       {tab === 'shipments'         && <ShipmentsTab orders={shipmentOrders} outdocType={outdocType ?? ''} />}
       {tab === 'outdoc_orders'    && <OutdocOrdersTab orders={outdocOrders} outdocType={outdocType ?? ''} />}
+      {tab === 'return_orders'    && <ReturnedOrdersTab orders={returnOrders} outdocType={outdocType ?? ''} />}
 
-      {tab === 'goods' && (
+      {tab === 'goods' && <GoodsMovementTab outdocId={outdocId} />}
+
+      {tab === 'sn' && <SerialNumbersTab outdocId={outdocId} />}
+
+      {tab === 'attrs' && (
         <div className="card overflow-hidden">
-          {goodsData?.goods && goodsData.goods.length > 0 ? (
+          {(attrsData?.items as IndocAttribute[] | undefined)?.length ? (
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
-                  <th className="th"><Hint text={dict('good_id', 'hint')}>{dict('good_id', 'short')}</Hint></th>
-                  <th className="th">Состояние</th>
-                  <th className="th"><Hint text={dict('qual_type', 'hint')}>{dict('qual_type', 'short')}</Hint></th>
-                  <th className="th text-right"><Hint text={dict('qnt', 'hint')}>{dict('qnt', 'short')}</Hint></th>
+                  <th className="th"><Hint text={dict('attribute_id', 'hint')}>{dict('attribute_id', 'short')}</Hint></th>
+                  <th className="th"><Hint text={dict('attribute_name', 'hint')}>{dict('attribute_name', 'short')}</Hint></th>
+                  <th className="th"><Hint text={dict('attribute_type', 'hint')}>{dict('attribute_type', 'short')}</Hint></th>
+                  <th className="th"><Hint text={dict('value', 'hint')}>{dict('value', 'short')}</Hint></th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {goodsData.goods.map((g, i) => (
-                  <tr key={i}>
-                    <td className="td font-mono text-sm">{g.good_id}</td>
-                    <td className="td text-gray-500">{g.good_state}</td>
-                    <td className="td text-gray-500">{dictEnum('qual_type', g.qual_type)}</td>
-                    <td className="td text-right font-medium">{g.qnt}</td>
+                {(attrsData.items as IndocAttribute[]).map((a) => (
+                  <tr key={a.attribute_id}>
+                    <td className="td text-xs text-gray-400 font-mono">{a.attribute_id}</td>
+                    <td className="td text-gray-500">{a.attribute_name}</td>
+                    <td className="td text-xs text-gray-400">{dictEnum('attribute_type', a.attribute_type)}</td>
+                    <td className="td font-medium">{a.value === null ? '—' : String(a.value)}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
           ) : (
-            <EmptyState title="Нет данных о товарах" />
-          )}
-        </div>
-      )}
-
-      {tab === 'sn' && (
-        <div className="card overflow-hidden">
-          {snData?.good_sn && snData.good_sn.length > 0 ? (
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="th"><Hint text={dict('good_sn', 'hint')}>{dict('good_sn', 'short')}</Hint></th>
-                  <th className="th"><Hint text={dict('good_id', 'hint')}>{dict('good_id', 'short')}</Hint></th>
-                  <th className="th"><Hint text={dict('qual_type', 'hint')}>{dict('qual_type', 'short')}</Hint></th>
-                  <th className="th"><Hint text={dict('inout', 'hint')}>{dict('inout', 'short')}</Hint></th>
-                  <th className="th"><Hint text={dict('order_id', 'hint')}>{dict('order_id', 'short')}</Hint></th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {snData.good_sn.map((sn, i) => (
-                  <tr key={i}>
-                    <td className="td font-mono text-sm">{sn.good_sn}</td>
-                    <td className="td text-gray-500 font-mono text-sm">{sn.good_id}</td>
-                    <td className="td text-gray-500">{dictEnum('qual_type', sn.qual_type)}</td>
-                    <td className="td">
-                      <span className={`badge ${sn.inout === 1 ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                        {sn.inout === 1 ? 'Приход' : 'Расход'}
-                      </span>
-                    </td>
-                    <td className="td text-gray-500">{sn.order_id ?? '—'}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          ) : (
-            <EmptyState title="Серийных номеров нет" />
+            <EmptyState title="Атрибутов нет" />
           )}
         </div>
       )}
@@ -923,28 +1302,16 @@ export default function OutdocDetailPage() {
               ))}
             </div>
           ) : (
-            <EmptyState title="Файлов нет" />
+            <EmptyState title="Файлов нет" description="Загрузите PDF-документы" />
           )}
         </div>
       )}
 
-      {tab === 'photos' && (
+      {tab === 'photos' && <OutdocPhotosTab photos={photosData?.items ?? []} />}
+
+      {tab === 'json' && (
         <div className="card p-6">
-          {photosData?.items && photosData.items.length > 0 ? (
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              {photosData.items.map((p) => (
-                <a key={p.photo_id} href={p.url} target="_blank" rel="noreferrer">
-                  <img
-                    src={p.url}
-                    alt={p.descrip ?? 'фото'}
-                    className="w-full aspect-square object-cover rounded-lg border border-gray-200 hover:opacity-90 transition-opacity"
-                  />
-                </a>
-              ))}
-            </div>
-          ) : (
-            <EmptyState title="Фото нет" />
-          )}
+          {detail ? <JsonViewer data={detail} /> : <EmptyState title="Нет данных" />}
         </div>
       )}
     </>

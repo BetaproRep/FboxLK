@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
+import { isTextSelected } from '@/utils/selection'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import toast from 'react-hot-toast'
 import { ordersApi } from '@/api/orders'
@@ -154,7 +155,7 @@ export default function OrderDetailPage() {
                   <tr
                     key={g.good_id}
                     className="hover:bg-gray-50 cursor-pointer transition-colors"
-                    onClick={() => navigate(`/goods/${encodeURIComponent(g.good_id)}`)}
+                    onClick={() => { if (isTextSelected()) return; navigate(`/goods/${encodeURIComponent(g.good_id)}`) }}
                   >
                     <td className="td font-medium text-primary-600">{g.good_id}</td>
                     <td className="td text-sm text-gray-500">{dictEnum('good_type', g.good_type)}</td>
@@ -189,7 +190,7 @@ export default function OrderDetailPage() {
                   <tr
                     key={od.outdoc_id}
                     className="hover:bg-gray-50 cursor-pointer transition-colors"
-                    onClick={() => navigate(`/outdocs/${od.outdoc_id}`)}
+                    onClick={() => { if (isTextSelected()) return; navigate(`/outdocs/${od.outdoc_id}`) }}
                   >
                     <td className="td text-gray-500">{new Date(od.created_at).toLocaleString()}</td>
                     <td className="td text-gray-500">{new Date(od.outdoc_date).toLocaleDateString()}</td>
@@ -267,7 +268,7 @@ export default function OrderDetailPage() {
                       </thead>
                       <tbody className="bg-white divide-y divide-gray-200">
                         {unitGoods.map((g, i) => (
-                          <tr key={i} className="hover:bg-gray-50 cursor-pointer transition-colors" onClick={() => navigate(`/goods/${encodeURIComponent(g.good_id)}`)}>
+                          <tr key={i} className="hover:bg-gray-50 cursor-pointer transition-colors" onClick={() => { if (isTextSelected()) return; navigate(`/goods/${encodeURIComponent(g.good_id)}`) }}>
                             <td className="td font-medium text-primary-600">{g.good_id}</td>
                             <td className="td text-sm text-gray-500">{dictEnum('good_type', g.good_type)}</td>
                             <td className="td text-gray-700">{g.good_name}</td>

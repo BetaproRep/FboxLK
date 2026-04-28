@@ -1,5 +1,7 @@
 import { useState, useEffect, useMemo, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { isTextSelected } from '@/utils/selection'
+import { OutdocsRow } from '@/components/ui/OutdocsRow'
 import { useQuery } from '@tanstack/react-query'
 import * as XLSX from 'xlsx'
 import { indocsApi } from '@/api/indocs'
@@ -47,30 +49,6 @@ function parseClipboard(text: string): ClipboardRow[] {
   return rows
 }
 
-function OutdocsRow({ outdocs, colSpan, navigate }: { outdocs: WebIndocListItem['outdocs']; colSpan: number; navigate: (path: string) => void }) {
-  if (!outdocs?.length) return null
-  return (
-    <tr>
-      <td colSpan={colSpan} className="px-4 pt-0 pb-1 bg-white group-hover:bg-gray-50 transition-colors">
-        <div className="flex flex-wrap gap-x-6 gap-y-1">
-          {outdocs.map((od) => (
-            <span key={od.outdoc_id} className="flex items-center gap-1.5 text-xs text-gray-500">
-              <span>{new Date(od.created_at).toLocaleString()}</span>
-              <a
-                href={`/outdocs/${od.outdoc_id}`}
-                onClick={(e) => { e.stopPropagation(); e.preventDefault(); navigate(`/outdocs/${od.outdoc_id}`) }}
-                className="text-primary-600 font-medium hover:underline"
-              >
-                {od.outdoc_id}
-              </a>
-              <span>{od.outdoc_type_descrip}</span>
-            </span>
-          ))}
-        </div>
-      </td>
-    </tr>
-  )
-}
 
 export default function IndocsListPage() {
   const navigate = useNavigate()
@@ -397,7 +375,7 @@ export default function IndocsListPage() {
                 <tbody
                   key={row.rowNum}
                   className="border-t border-gray-200 group cursor-pointer"
-                  onClick={() => navigate(`/indocs/${encodeURIComponent(row.item!.indoc_id)}`, { state: { item: row.item } })}
+                  onClick={() => { if (isTextSelected()) return; navigate(`/indocs/${encodeURIComponent(row.item!.indoc_id)}`, { state: { item: row.item } }) }}
                 >
                   <tr className="group-hover:bg-gray-50 transition-colors">
                     <td className="td text-gray-400 text-xs">{row.rowNum}</td>
@@ -414,7 +392,7 @@ export default function IndocsListPage() {
                     <td className="td text-gray-500">{row.item.indoc_type_descrip}</td>
                     <td className="td text-gray-500 max-w-xs truncate">{row.item.indoc_txt ?? '—'}</td>
                   </tr>
-                  <OutdocsRow outdocs={row.item.outdocs} colSpan={7} navigate={navigate} />
+                  <OutdocsRow outdocs={row.item.outdocs} colSpan={7} />
                 </tbody>
               ) : (
                 <tbody key={row.rowNum} className="border-t border-gray-200 bg-red-50">
@@ -459,7 +437,7 @@ export default function IndocsListPage() {
               <tbody
                 key={item.indoc_id}
                 className="border-t border-gray-200 group cursor-pointer"
-                onClick={() => navigate(`/indocs/${encodeURIComponent(item.indoc_id)}`, { state: { item } })}
+                onClick={() => { if (isTextSelected()) return; navigate(`/indocs/${encodeURIComponent(item.indoc_id)}`, { state: { item } }) }}
               >
                 <tr className="group-hover:bg-gray-50 transition-colors">
                   <td className="td text-gray-500">{new Date(item.created_at).toLocaleString()}</td>
@@ -474,7 +452,7 @@ export default function IndocsListPage() {
                   <td className="td text-gray-500">{item.indoc_type_descrip}</td>
                   <td className="td text-gray-500 max-w-xs truncate">{item.indoc_txt ?? '—'}</td>
                 </tr>
-                <OutdocsRow outdocs={item.outdocs} colSpan={5} navigate={navigate} />
+                <OutdocsRow outdocs={item.outdocs} colSpan={5} />
               </tbody>
             ))}
           </table>

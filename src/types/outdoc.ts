@@ -234,6 +234,32 @@ export interface OrdersShipmentOutdoc extends OutdocDetailBase {
   orders?: OrderOutItem[]
 }
 
+export interface ReturnGoodItem {
+  good_id: string
+  qual_type: string
+  expiry_date?: string
+  good_sn?: string
+  good_sn0?: string
+  stock_qnt: number
+}
+
+export interface ReturnOrderEntry {
+  order_id?: string
+  return_barcode?: string
+  parcel_barcode?: string
+  goods: ReturnGoodItem[]
+}
+
+export interface OrdersPartReturnOutdoc extends OutdocDetailBase {
+  outdoc_type: 'orders_part_return'
+  orders?: ReturnOrderEntry[]
+}
+
+export interface OrdersClientReturnOutdoc extends OutdocDetailBase {
+  outdoc_type: 'orders_client_return'
+  orders?: ReturnOrderEntry[]
+}
+
 export interface OutdocFile {
   file_name: string
   copy_qnt: number

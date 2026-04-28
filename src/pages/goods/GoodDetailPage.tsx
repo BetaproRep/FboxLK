@@ -1,6 +1,8 @@
 import { useState, useEffect, useMemo } from 'react'
 import * as XLSX from 'xlsx'
 import { useParams, useNavigate } from 'react-router-dom'
+import { isTextSelected } from '@/utils/selection'
+import { OutdocsRow } from '@/components/ui/OutdocsRow'
 import { useQuery } from '@tanstack/react-query'
 import { goodsApi } from '@/api/goods'
 import { ordersApi } from '@/api/orders'
@@ -19,34 +21,6 @@ import OrderStateBadge from '@/components/ui/OrderStateBadge'
 
 type OrdSortKey = 'order_id' | 'created_at' | 'state' | 'clnt_name' | 'delivery_name'
 
-function OutdocsRow({ outdocs, colSpan, navigate }: {
-  outdocs: OrderListItem['outdocs']
-  colSpan: number
-  navigate: (path: string) => void
-}) {
-  if (!outdocs?.length) return null
-  return (
-    <tr>
-      <td colSpan={colSpan} className="px-4 pt-0 pb-1 bg-white group-hover:bg-gray-50 transition-colors">
-        <div className="flex flex-wrap gap-x-6 gap-y-1">
-          {outdocs.map((od) => (
-            <span key={od.outdoc_id} className="flex items-center gap-1.5 text-xs text-gray-500">
-              <span>{new Date(od.created_at).toLocaleString()}</span>
-              <a
-                href={`/outdocs/${od.outdoc_id}`}
-                onClick={(e) => { e.stopPropagation(); e.preventDefault(); navigate(`/outdocs/${od.outdoc_id}`) }}
-                className="text-primary-600 font-medium hover:underline"
-              >
-                {od.outdoc_id}
-              </a>
-              <span>{od.outdoc_type_descrip}</span>
-            </span>
-          ))}
-        </div>
-      </td>
-    </tr>
-  )
-}
 
 type Tab = 'info' | 'movements' | 'orders' | 'eans' | 'photos' | 'sn'
 
@@ -434,7 +408,7 @@ export default function GoodDetailPage() {
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
                 {mvItems.map((m, i) => (
-                  <tr key={i} className="hover:bg-gray-50 cursor-pointer transition-colors" onClick={() => navigate(`/outdocs/${m.outdoc_id}`)}>
+                  <tr key={i} className="hover:bg-gray-50 cursor-pointer transition-colors" onClick={() => { if (isTextSelected()) return; navigate(`/outdocs/${m.outdoc_id}`) }}>
                     <td className="td text-gray-500">{new Date(m.outdoc_date).toLocaleDateString()}</td>
                     <td className="td text-sm text-gray-500">{dictEnum('qual_type', m.qual_type)}</td>
                     <td className="td font-medium">{m.qnt}</td>
@@ -515,7 +489,7 @@ export default function GoodDetailPage() {
                   <tbody
                     key={`${item.order_id}-${i}`}
                     className="border-t border-gray-200 group cursor-pointer"
-                    onClick={() => navigate(`/orders/${encodeURIComponent(item.order_id)}`)}
+                    onClick={() => { if (isTextSelected()) return; navigate(`/orders/${encodeURIComponent(item.order_id)}`) }}
                   >
                     <tr className="group-hover:bg-gray-50 transition-colors">
                       <td className="td text-gray-500">{new Date(item.created_at).toLocaleString()}</td>
@@ -526,7 +500,7 @@ export default function GoodDetailPage() {
                       <td className="td text-gray-500">{item.clnt_name ?? '—'}</td>
                       <td className="td text-gray-500">{item.delivery_name ?? '—'}</td>
                     </tr>
-                    <OutdocsRow outdocs={item.outdocs} colSpan={5} navigate={navigate} />
+                    <OutdocsRow outdocs={item.outdocs} colSpan={5} />
                   </tbody>
                 ))}
               </table>

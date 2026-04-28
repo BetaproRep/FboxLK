@@ -52,10 +52,14 @@ export const outdocsApi = {
   },
 
   uploadFile: async (outdocId: number, file: File) => {
-    const formData = new FormData()
-    formData.append('file', file)
-    const { data } = await apiClient.post(`/outdocs/${outdocId}/files`, formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
+    const file_data = await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader()
+      reader.onload = () => resolve((reader.result as string).split(',')[1])
+      reader.onerror = reject
+      reader.readAsDataURL(file)
+    })
+    const { data } = await apiClient.post(`/outdocs/${outdocId}/files`, {
+      files: [{ file_name: file.name, file_data }],
     })
     return data
   },

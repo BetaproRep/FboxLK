@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo, useRef } from 'react'
 import * as XLSX from 'xlsx'
 import { useNavigate } from 'react-router-dom'
+import { isTextSelected } from '@/utils/selection'
 import { useQuery } from '@tanstack/react-query'
 import { goodsApi } from '@/api/goods'
 import type { GoodListItem } from '@/types/good'
@@ -349,7 +350,7 @@ export default function GoodsListPage() {
                   <tr
                     key={row.rowNum}
                     className="hover:bg-gray-50 cursor-pointer transition-colors"
-                    onClick={() => navigate(`/goods/${encodeURIComponent(row.item!.good_id)}`)}
+                    onClick={() => { if (isTextSelected()) return; navigate(`/goods/${encodeURIComponent(row.item!.good_id)}`) }}
                   >
                     <td className="td text-gray-400 text-xs">{row.rowNum}</td>
                     <td className="td font-mono text-sm text-primary-600">{row.item.good_id}</td>
@@ -399,7 +400,7 @@ export default function GoodsListPage() {
                 <tr
                   key={item.good_id}
                   className="hover:bg-gray-50 cursor-pointer transition-colors"
-                  onClick={() => navigate(`/goods/${encodeURIComponent(item.good_id)}`)}
+                  onClick={() => { if (isTextSelected()) return; navigate(`/goods/${encodeURIComponent(item.good_id)}`) }}
                 >
                   <td className="td font-mono text-sm text-primary-600">{item.good_id}</td>
                   <td className="td font-medium">{item.good_name}</td>

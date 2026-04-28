@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { isTextSelected } from '@/utils/selection'
 import { useQuery, useMutation } from '@tanstack/react-query'
 import * as XLSX from 'xlsx'
 import { outdocsApi } from '@/api/outdocs'
@@ -229,7 +230,7 @@ export default function OutdocsListPage() {
               <tbody
                 key={item.outdoc_id}
                 className="border-t border-gray-200 group cursor-pointer"
-                onClick={() => navigate(`/outdocs/${item.outdoc_id}`)}
+                onClick={() => { if (isTextSelected()) return; navigate(`/outdocs/${item.outdoc_id}`) }}
               >
                 <tr className="group-hover:bg-gray-50 transition-colors">
                   <td className="td text-gray-500">{new Date(item.created_at).toLocaleString()}</td>
