@@ -29,7 +29,7 @@ interface JsonViewerProps {
   maxHeight?: string
 }
 
-export default function JsonViewer({ data, maxHeight = '600px' }: JsonViewerProps) {
+export default function JsonViewer({ data, maxHeight = '6000px' }: JsonViewerProps) {
   const json = JSON.stringify(data, null, 2)
   return (
     <pre

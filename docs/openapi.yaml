@@ -12156,6 +12156,22 @@ components:
             * <button popovertarget="popdoc10" style="font-size:14px; color:#32329f; background-color:transparent; border:none; padding: 1px; text-decoration: underline dotted 1px;">Товары отгружены (goods_shipment)</button> 
             * <button popovertarget="popdoc40" style="font-size:14px; color:#32329f; background-color:transparent; border:none; padding: 1px; text-decoration: underline dotted 1px;">Получены заказы (orders_receiving)</button>
           title: Связанный входящий документ Заказчика
+        indoc_type:
+          type: string
+          enum:
+            - goods_supply_task
+            - goods_shipment_task
+            - orders_shipment_task
+            - goods_from_long_storage_task
+          title: Тип входящего документа
+        indoc_txt:
+          type: string
+          maxLength: 255
+          title: Примечание к документу
+        indoc_created_at:
+          allOf:
+            - $ref: '#/components/schemas/datetime'
+          title: Дата создания входящего документа
         attributes:
           type: array
           items:

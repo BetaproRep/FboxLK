@@ -9,7 +9,9 @@
       "Bash(node -e ':*)",
       "WebFetch(domain:github.com)",
       "WebFetch(domain:vitest.dev)",
-      "Bash(npx vitest:*)"
+      "Bash(npx vitest:*)",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)"
     ]
   }
 }
