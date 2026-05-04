@@ -91,6 +91,7 @@ export default function OrderDetailPage() {
     { dictKey: 'dispatch_number',value: order.plt_info?.dispatch_number },
     { dictKey: 'declared_value', value: order.plt_info?.declared_value != null ? `${order.plt_info.declared_value} ₽` : null },
     { dictKey: 'cod',            value: order.plt_info?.cod != null ? `${order.plt_info.cod} ₽` : null },
+    { dictKey: 'wait_reason',    value: order.wait_reason, newLine: true, valueColor: 'red' },
   ]
 
   const tabs: { key: Tab; label: string }[] = [

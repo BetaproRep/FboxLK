@@ -10,6 +10,8 @@ import PageHeader from '@/components/ui/PageHeader'
 import DateRangeFilter from '@/components/ui/DateRangeFilter'
 import EmptyState from '@/components/ui/EmptyState'
 import Spinner from '@/components/ui/Spinner'
+import PropList from '@/components/ui/PropList'
+import type { PropItem } from '@/components/ui/PropList'
 import { dict, dictEnum } from '@/constants/dict'
 import Hint from '@/components/ui/Hint'
 import SortIcon from '@/components/ui/SortIcon'
@@ -203,6 +205,20 @@ export default function OrdersListPage() {
 
   const isEmpty = clipboardRows ? mergedRows?.length === 0 : allItems.length === 0
 
+  function renderWaitReasonRow(waitReason: string | undefined, colSpan: number) {
+    if (!waitReason) return null
+    const waitReasonProps: PropItem[] = [
+      { dictKey: 'wait_reason', value: waitReason, newLine: true, valueColor: 'red' },
+    ]
+    return (
+      <tr>
+        <td colSpan={colSpan} className="px-4 pt-0 pb-2 bg-white group-hover:bg-gray-50 transition-colors">
+          <PropList items={waitReasonProps} className="text-sm text-gray-500" />
+        </td>
+      </tr>
+    )
+  }
+
   function exportToExcel() {
     const rows = clipboardRows && mergedRows
       ? mergedRows.map((r) => ({
@@ -353,7 +369,8 @@ export default function OrdersListPage() {
                     </td>
                     <td className="td text-gray-500">{row.item.delivery_name ?? '—'}</td>
                   </tr>
-                  <OutdocsRow outdocs={row.item.outdocs} colSpan={7}  />
+                  {renderWaitReasonRow(row.item.wait_reason, 7)}
+                  <OutdocsRow outdocs={row.item.outdocs} colSpan={7} />
                 </tbody>
               ) : (
                 <tbody key={row.rowNum} className="border-t border-gray-200 bg-red-50">
@@ -404,7 +421,8 @@ export default function OrdersListPage() {
                   <td className="td text-gray-500">{item.clnt_name ?? '—'}</td>
                   <td className="td text-gray-500">{item.delivery_name ?? '—'}</td>
                 </tr>
-                <OutdocsRow outdocs={item.outdocs} colSpan={5}  />
+                {renderWaitReasonRow(item.wait_reason, 5)}
+                <OutdocsRow outdocs={item.outdocs} colSpan={5} />
               </tbody>
             ))}
           </table>

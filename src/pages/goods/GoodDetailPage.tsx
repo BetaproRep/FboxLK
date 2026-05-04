@@ -21,7 +21,6 @@ import OrderStateBadge from '@/components/ui/OrderStateBadge'
 
 type OrdSortKey = 'order_id' | 'created_at' | 'state' | 'clnt_name' | 'delivery_name'
 
-
 type Tab = 'info' | 'movements' | 'orders' | 'eans' | 'photos' | 'sn'
 
 export default function GoodDetailPage() {
@@ -169,6 +168,20 @@ export default function GoodDetailPage() {
       return ordSortDir === 'asc' ? cmp : -cmp
     })
   }, [ordAllItems, ordSearch, ordSortKey, ordSortDir])
+
+  function renderWaitReasonRow(waitReason: string | undefined, colSpan: number) {
+    if (!waitReason) return null
+    const waitReasonProps: PropItem[] = [
+      { dictKey: 'wait_reason', value: waitReason, newLine: true, valueColor: 'red' },
+    ]
+    return (
+      <tr>
+        <td colSpan={colSpan} className="px-4 pt-0 pb-2 bg-white group-hover:bg-gray-50 transition-colors">
+          <PropList items={waitReasonProps} className="text-sm text-gray-500" />
+        </td>
+      </tr>
+    )
+  }
 
   function exportOrdToExcel() {
     const rows = ordSortedItems.map(item => ({
@@ -500,6 +513,7 @@ export default function GoodDetailPage() {
                       <td className="td text-gray-500">{item.clnt_name ?? '—'}</td>
                       <td className="td text-gray-500">{item.delivery_name ?? '—'}</td>
                     </tr>
+                    {renderWaitReasonRow(item.wait_reason, 5)}
                     <OutdocsRow outdocs={item.outdocs} colSpan={5} />
                   </tbody>
                 ))}

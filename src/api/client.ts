@@ -2,9 +2,13 @@ import axios from 'axios'
 import toast from 'react-hot-toast'
 import { getBasicAuth, clearCredentials } from '@/store/auth'
 
+const runtimeBaseUrl = window.__APP_CONFIG__?.API_BASE_URL?.trim()
+const buildTimeBaseUrl = import.meta.env.VITE_API_BASE_URL?.trim()
+const apiBaseUrl =
+  runtimeBaseUrl || buildTimeBaseUrl || 'http://lpwtst.betta.ru:8084/grh/api'
+
 export const apiClient = axios.create({
-  // baseURL: 'https://lpw.betta.ru:8084/grh/api',
-  baseURL: 'http://lpwtst.betta.ru:8084/grh/api',
+  baseURL: apiBaseUrl,
   headers: { 'Content-Type': 'application/json' },
 })
 

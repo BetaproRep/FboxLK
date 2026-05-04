@@ -12,6 +12,7 @@ export interface OrderListItem {
   order_id: string
   created_at: string
   indoc_id?: string
+  wait_reason?: string
   delivery_id: number
   delivery_name?: string
   clnt_name?: string
@@ -69,6 +70,7 @@ export interface OrderDetail {
   created_at?: string
   indoc_id?: string
   indoc_txt?: string
+  wait_reason?: string
   origin?: string
   delivery_id?: number
   delivery_name?: string

@@ -318,6 +318,7 @@ export default function CreateOrdersShipmentTask({ isOpen, onClose }: Props) {
           </div>
         </div>
       )}
+      {confirmNode}
     </>
   )
 }
