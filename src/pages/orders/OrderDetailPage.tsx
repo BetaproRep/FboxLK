@@ -81,7 +81,7 @@ export default function OrderDetailPage() {
 
   const propItems: PropItem[] = [
     { dictKey: 'created_at',     value: order.created_at ? new Date(order.created_at).toLocaleString() : null },
-    { dictKey: 'indoc_id',       value: order.indoc_id },
+    { dictKey: 'indoc_id',       value: order.indoc_id, href: order.indoc_id ? `/indocs/${encodeURIComponent(String(order.indoc_id))}` : undefined },
     { dictKey: 'indoc_txt',      value: order.indoc_txt },
     { dictKey: 'origin',         value: order.origin, newLine: true },
     { dictKey: 'delivery_cname', value: deliveryCname || null },

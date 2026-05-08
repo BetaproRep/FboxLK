@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useParams, useNavigate, useLocation } from 'react-router-dom'
 import { isTextSelected } from '@/utils/selection'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
@@ -18,6 +18,7 @@ import Hint from '@/components/ui/Hint'
 import PropList from '@/components/ui/PropList'
 import IndocStateBadge from '@/components/ui/IndocStateBadge'
 import { useConfirmDialog } from '@/components/ui/ConfirmDialog'
+import { OutdocsRow } from '@/components/ui/OutdocsRow'
 
 // ─── Вкладки ────────────────────────────────────────────────────────────────
 
@@ -145,11 +146,11 @@ function OrdersTab({ indoc }: { indoc: IndocJson }) {
       <table className="min-w-full border-collapse">
         <thead className="bg-gray-50">
           <tr>
-            <th className="th"><Hint text={dict('created_at', 'hint')}>{dict('created_at', 'short')}</Hint></th>
-            <th className="th"><Hint text={dict('state', 'hint')}>{dict('state', 'short')}</Hint></th>
             <th className="th"><Hint text={dict('order_id', 'hint')}>{dict('order_id', 'short')}</Hint></th>
+            <th className="th"><Hint text={dict('state', 'hint')}>{dict('state', 'short')}</Hint></th>
             <th className="th"><Hint text={dict('clnt_name', 'hint')}>{dict('clnt_name', 'short')}</Hint></th>
             <th className="th"><Hint text={dict('delivery_name', 'hint')}>{dict('delivery_name', 'short')}</Hint></th>
+            <th className="th"><Hint text={dict('created_at', 'hint')}>{dict('created_at', 'short')}</Hint></th>
           </tr>
         </thead>
         {items.map((item) => (
@@ -159,33 +160,13 @@ function OrdersTab({ indoc }: { indoc: IndocJson }) {
             onClick={() => { if (isTextSelected()) return; navigate(`/orders/${encodeURIComponent(item.order_id)}`) }}
           >
             <tr className="group-hover:bg-gray-50 transition-colors">
-              <td className="td text-gray-500">{new Date(item.created_at).toLocaleString()}</td>
-              <td className="td"><OrderStateBadge state={item.state} /></td>
               <td className="td font-medium text-primary-600">{item.order_id}</td>
+              <td className="td"><OrderStateBadge state={item.state} /></td>
               <td className="td text-gray-500">{item.clnt_name ?? '—'}</td>
               <td className="td text-gray-500">{item.delivery_name ?? '—'}</td>
+              <td className="td text-gray-500">{new Date(item.created_at).toLocaleString()}</td>
             </tr>
-            {item.outdocs?.length ? (
-              <tr>
-                <td colSpan={5} className="px-4 pt-0 pb-1 bg-white group-hover:bg-gray-50 transition-colors">
-                  <div className="flex flex-wrap gap-x-6 gap-y-1">
-                    {item.outdocs.map((od) => (
-                      <span key={od.outdoc_id} className="flex items-center gap-1.5 text-xs text-gray-500">
-                        <span>{new Date(od.created_at).toLocaleString()}</span>
-                        <a
-                          href={`/outdocs/${od.outdoc_id}`}
-                          onClick={(e) => { e.stopPropagation(); e.preventDefault(); navigate(`/outdocs/${od.outdoc_id}`) }}
-                          className="text-primary-600 font-medium hover:underline"
-                        >
-                          {od.outdoc_id}
-                        </a>
-                        <span>{od.outdoc_type_descrip}</span>
-                      </span>
-                    ))}
-                  </div>
-                </td>
-              </tr>
-            ) : null}
+            <OutdocsRow outdocs={item.outdocs} colSpan={5} />
           </tbody>
         ))}
       </table>
@@ -348,7 +329,7 @@ export default function IndocDetailPage() {
 
   const tabKey = `indoc-tab-${indocId}`
   const initialTab: Tab = (sessionStorage.getItem(tabKey) as Tab | null)
-    ?? (listItem?.indoc_type ? (typeTab(listItem.indoc_type)?.id ?? 'json') : 'json')
+    ?? (listItem?.indoc_type ? (typeTab(listItem.indoc_type)?.id ?? 'attrs') : 'attrs')
   const [tab, setTab] = useState<Tab>(initialTab)
 
   function handleSetTab(t: Tab) {
@@ -362,6 +343,13 @@ export default function IndocDetailPage() {
   })
 
   const webItem = webListData?.items[0]
+
+  useEffect(() => {
+    if (sessionStorage.getItem(tabKey)) return
+    if (listItem?.indoc_type) return
+    if (!webItem?.indoc_type) return
+    setTab(typeTab(webItem.indoc_type)?.id ?? 'attrs')
+  }, [tabKey, listItem?.indoc_type, webItem?.indoc_type])
 
   const { data: jsonData, isLoading: jsonLoading } = useQuery({
     queryKey: ['indoc-json', indocId],
@@ -419,6 +407,12 @@ export default function IndocDetailPage() {
   const createdAt = webItem?.created_at      ?? listItem?.created_at
   const indocState   = webItem?.indoc_state
   const stateDescrip = webItem?.indoc_state_descrip
+  const shipmentQualType = indoc?.indoc_type === 'goods_shipment_task' && indoc.qual_type
+    ? dictEnum('qual_type', indoc.qual_type)
+    : undefined
+  const shipmentPickingOnly = indoc?.indoc_type === 'goods_shipment_task' && indoc.picking_only != null
+    ? (indoc.picking_only ? 'Да' : 'Нет')
+    : undefined
 
   const goodsSum =
     indoc && (indoc.indoc_type === 'goods_supply_task' || indoc.indoc_type === 'goods_shipment_task')
@@ -461,6 +455,8 @@ export default function IndocDetailPage() {
             { dictKey: 'indoc_id',    value: indocId },
             { dictKey: 'created_at',  value: createdAt ? new Date(createdAt).toLocaleString('ru-RU') : undefined },
             { dictKey: 'indoc_txt',   value: indocTxt },
+            { dictKey: 'qual_type',   value: shipmentQualType, newLine: true , valueColor: 'blue'},
+            { dictKey: 'picking_only', value: shipmentPickingOnly , valueColor: 'blue'},
           ]} />
         }
         actions={

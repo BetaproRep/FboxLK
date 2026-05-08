@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, FormEvent } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast' // используется для финального "Документ создан" после закрытия модала
 import { indocsApi } from '@/api/indocs'
 import DownloadFilesModal from '@/components/ui/DownloadFilesModal'
@@ -79,6 +80,7 @@ interface Alert {
 
 export default function CreateGoodsSupplyTask({ isOpen, onClose }: Props) {
   const qc = useQueryClient()
+  const navigate = useNavigate()
   const { confirm, confirmNode } = useConfirmDialog()
   const [indocId, setIndocId] = useState('')
   const [indocTxt, setIndocTxt] = useState('')
@@ -182,16 +184,17 @@ export default function CreateGoodsSupplyTask({ isOpen, onClose }: Props) {
   }
 
   const mutation = useMutation({
-    mutationFn: () =>
+    mutationFn: (createdIndocId: string) =>
       indocsApi.create({
         indoc_type: 'goods_supply_task',
-        indoc_id: indocId.trim(),
+        indoc_id: createdIndocId,
         indoc_txt: indocTxt || undefined,
         items: items.map((row) => ({ ...row.extra, good_id: row.good_id.trim(), plan_qnt: Number(row.plan_qnt) })),
       }),
-    onSuccess: () => {
+    onSuccess: (_, createdIndocId) => {
       toast.success('Документ создан')
       qc.invalidateQueries({ queryKey: ['indocs'] })
+      navigate(`/indocs/${encodeURIComponent(createdIndocId)}`)
       onClose()
       setIndocId('')
       setIndocTxt('')
@@ -225,7 +228,7 @@ export default function CreateGoodsSupplyTask({ isOpen, onClose }: Props) {
       return
     }
 
-    mutation.mutate()
+    mutation.mutate(indocId.trim())
   }
 
   return (

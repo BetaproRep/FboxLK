@@ -1,6 +1,7 @@
 import { useState, FormEvent } from 'react'
 import DownloadFilesModal from '@/components/ui/DownloadFilesModal'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import { indocsApi } from '@/api/indocs'
 import type { OrderCreateItem } from '@/types/order'
@@ -30,6 +31,7 @@ interface Props {
 
 export default function CreateOrdersShipmentTask({ isOpen, onClose }: Props) {
   const qc = useQueryClient()
+  const navigate = useNavigate()
   const { confirm, confirmNode } = useConfirmDialog()
   const [indocId, setIndocId] = useState('')
   const [indocTxt, setIndocTxt] = useState('')
@@ -105,16 +107,17 @@ export default function CreateOrdersShipmentTask({ isOpen, onClose }: Props) {
   }
 
   const mutation = useMutation({
-    mutationFn: () =>
+    mutationFn: (createdIndocId: string) =>
       indocsApi.create({
         indoc_type: 'orders_shipment_task',
-        indoc_id: indocId.trim(),
+        indoc_id: createdIndocId,
         indoc_txt: indocTxt || undefined,
         orders: entries.map((e) => e.order),
       }),
-    onSuccess: () => {
+    onSuccess: (_, createdIndocId) => {
       toast.success('Документ создан')
       qc.invalidateQueries({ queryKey: ['indocs'] })
+      navigate(`/indocs/${encodeURIComponent(createdIndocId)}`)
       handleClose()
     },
     onError: (err: Error) => {
@@ -128,7 +131,7 @@ export default function CreateOrdersShipmentTask({ isOpen, onClose }: Props) {
       setAlert({ type: 'error', message: 'Вставьте заказы из шаблона' })
       return
     }
-    mutation.mutate()
+    mutation.mutate(indocId.trim())
   }
 
   function handleClose() {

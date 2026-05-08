@@ -176,7 +176,7 @@ export default function OrdersListPage() {
         r.order_id.toLowerCase().includes(q) ||
         r.note.toLowerCase().includes(q) ||
         (r.item &&
-          [r.item.delivery_name, r.item.clnt_name, r.item.state, r.item.indoc_id].some(
+          [r.item.delivery_name, r.item.clnt_name, r.item.state, dictEnum('order_state', r.item.state), r.item.indoc_id].some(
             (v) => v != null && String(v).toLowerCase().includes(q),
           )),
     )
@@ -187,7 +187,7 @@ export default function OrdersListPage() {
     const q = search.trim().toLowerCase()
     const filtered = q
       ? allItems.filter((item) =>
-          [item.order_id, item.delivery_name, item.clnt_name, item.state, item.indoc_id].some(
+          [item.order_id, item.delivery_name, item.clnt_name, item.state, dictEnum('order_state', item.state), item.indoc_id].some(
             (v) => v != null && String(v).toLowerCase().includes(q),
           ),
         )
@@ -245,11 +245,11 @@ export default function OrdersListPage() {
   }
 
   const SORT_COLS: { key: SortKey; dictKey: Parameters<typeof dict>[0] }[] = [
-    { key: 'created_at', dictKey: 'created_at' },
-    { key: 'state',      dictKey: 'state' },
     { key: 'order_id',   dictKey: 'order_id' },
+    { key: 'state',      dictKey: 'state' },
     { key: 'clnt_name',  dictKey: 'clnt_name' },
     { key: 'delivery_name', dictKey: 'delivery_name' },
+    { key: 'created_at', dictKey: 'created_at' },
   ]
 
   return (
@@ -344,11 +344,11 @@ export default function OrdersListPage() {
               <tr>
                 <th className="th w-12">#</th>
                 <th className="th"><Hint text={dict('order_id', 'hint')}>{dict('order_id', 'short')}</Hint></th>
-                <th className="th">Клиент</th>
                 <th className="th">2-я колонка буфера</th>
-                <th className="th"><Hint text={dict('created_at', 'hint')}>{dict('created_at', 'short')}</Hint></th>
                 <th className="th"><Hint text={dict('state', 'hint')}>{dict('state', 'short')}</Hint></th>
+                <th className="th"><Hint text={dict('clnt_name', 'hint')}>{dict('clnt_name', 'short')}</Hint></th>
                 <th className="th"><Hint text={dict('delivery_name', 'hint')}>{dict('delivery_name', 'short')}</Hint></th>
+                <th className="th"><Hint text={dict('created_at', 'hint')}>{dict('created_at', 'short')}</Hint></th>
               </tr>
             </thead>
             {mergedRows.map((row) =>
@@ -361,13 +361,13 @@ export default function OrdersListPage() {
                   <tr className="group-hover:bg-gray-50 transition-colors">
                     <td className="td text-gray-400 text-xs">{row.rowNum}</td>
                     <td className="td font-medium text-primary-600">{row.item.order_id}</td>
-                    <td className="td text-gray-500">{row.item.clnt_name ?? '—'}</td>
                     <td className="td text-gray-500 max-w-xs truncate">{row.note || '—'}</td>
-                    <td className="td text-gray-500">{new Date(row.item.created_at).toLocaleString()}</td>
                     <td className="td">
                       <OrderStateBadge state={row.item.state} />
                     </td>
+                    <td className="td text-gray-500">{row.item.clnt_name ?? '—'}</td>
                     <td className="td text-gray-500">{row.item.delivery_name ?? '—'}</td>
+                    <td className="td text-gray-500">{new Date(row.item.created_at).toLocaleString()}</td>
                   </tr>
                   {renderWaitReasonRow(row.item.wait_reason, 7)}
                   <OutdocsRow outdocs={row.item.outdocs} colSpan={7} />
@@ -377,13 +377,11 @@ export default function OrdersListPage() {
                   <tr>
                     <td className="td text-gray-400 text-xs">{row.rowNum}</td>
                     <td className="td font-medium text-gray-500">{row.order_id}</td>
-                    <td className="td" />
                     <td className="td text-gray-500 max-w-xs truncate">{row.note || '—'}</td>
-                    <td className="td text-gray-400">—</td>
                     <td className="td">
                       <span className="badge bg-red-100 text-red-600">Не найден</span>
                     </td>
-                    <td className="td" colSpan={1} />
+                    <td className="td" colSpan={3} />
                   </tr>
                 </tbody>
               ),
@@ -413,13 +411,13 @@ export default function OrdersListPage() {
                 onClick={() => { if (isTextSelected()) return; navigate(`/orders/${encodeURIComponent(item.order_id)}`) }}
               >
                 <tr className="group-hover:bg-gray-50 transition-colors">
-                  <td className="td text-gray-500">{new Date(item.created_at).toLocaleString()}</td>
+                  <td className="td font-medium text-primary-600">{item.order_id}</td>
                   <td className="td">
                     <OrderStateBadge state={item.state} />
                   </td>
-                  <td className="td font-medium text-primary-600">{item.order_id}</td>
                   <td className="td text-gray-500">{item.clnt_name ?? '—'}</td>
                   <td className="td text-gray-500">{item.delivery_name ?? '—'}</td>
+                  <td className="td text-gray-500">{new Date(item.created_at).toLocaleString()}</td>
                 </tr>
                 {renderWaitReasonRow(item.wait_reason, 5)}
                 <OutdocsRow outdocs={item.outdocs} colSpan={5} />

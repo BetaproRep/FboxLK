@@ -386,11 +386,11 @@ function OutdocOrdersTab({ orders, outdocType }: { orders: OutdocOrderItem[]; ou
       <table className="min-w-full border-collapse text-sm">
         <thead className="bg-gray-50">
           <tr>
-            <SortTh sortKey="created_at"    label={dict('created_at', 'short')}    hint={dict('created_at', 'hint')}    {...sortProps} />
-            <SortTh sortKey="state"         label={dict('state', 'short')}         hint={dict('state', 'hint')}         {...sortProps} />
             <SortTh sortKey="order_id"      label={dict('order_id', 'short')}      hint={dict('order_id', 'hint')}      {...sortProps} />
+            <SortTh sortKey="state"         label={dict('state', 'short')}         hint={dict('state', 'hint')}         {...sortProps} />
             <SortTh sortKey="clnt_name"     label={dict('clnt_name', 'short')}     hint={dict('clnt_name', 'hint')}     {...sortProps} />
             <SortTh sortKey="delivery_name" label={dict('delivery_name', 'short')} hint={dict('delivery_name', 'hint')} {...sortProps} />
+            <SortTh sortKey="created_at"    label={dict('created_at', 'short')}    hint={dict('created_at', 'hint')}    {...sortProps} />
             {showPayment  && <SortTh sortKey="payment"   label={dict('payment', 'short')}   hint={dict('payment', 'hint')}   {...sortProps} className="text-right" />}
             {showClntDate && <SortTh sortKey="clnt_date" label={dict('clnt_date', 'short')} hint={dict('clnt_date', 'hint')} {...sortProps} />}
             {showFileDate && <SortTh sortKey="file_date" label={dict('file_date', 'short')} hint={dict('file_date', 'hint')} {...sortProps} />}
@@ -412,11 +412,11 @@ function OutdocOrdersTab({ orders, outdocType }: { orders: OutdocOrderItem[]; ou
               onClick={() => { if (isTextSelected()) return; navigate(`/orders/${encodeURIComponent(item.order_id)}`) }}
             >
               <tr className="group-hover:bg-gray-50 transition-colors">
-                <td className="td text-gray-500">{new Date(item.created_at).toLocaleString('ru-RU')}</td>
-                <td className="td"><OrderStateBadge state={item.state} /></td>
                 <td className="td font-medium text-primary-600">{item.order_id}</td>
+                <td className="td"><OrderStateBadge state={item.state} /></td>
                 <td className="td text-gray-500">{item.clnt_name ?? '—'}</td>
                 <td className="td text-gray-500">{item.delivery_name ?? '—'}</td>
+                <td className="td text-gray-500">{new Date(item.created_at).toLocaleString('ru-RU')}</td>
                 {showPayment  && <td className="td text-right">{outdocOrd?.payment ?? '—'}</td>}
                 {showClntDate && <td className="td text-gray-500">{outdocOrd?.clnt_date ? new Date(outdocOrd.clnt_date).toLocaleDateString('ru-RU') : '—'}</td>}
                 {showFileDate && <td className="td text-gray-500">{outdocOrd?.file_date ? new Date(outdocOrd.file_date).toLocaleDateString('ru-RU') : '—'}</td>}

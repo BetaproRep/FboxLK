@@ -362,12 +362,12 @@ export default function IndocsListPage() {
             <thead className="bg-gray-50">
               <tr>
                 <th className="th w-12">#</th>
-                <th className="th"><Hint text={dict('created_at', 'hint')}>{dict('created_at', 'short')}</Hint></th>
-                <th className="th"><Hint text={dict('indoc_state', 'hint')}>{dict('indoc_state', 'short')}</Hint></th>
                 <th className="th"><Hint text={dict('indoc_id', 'hint')}>{dict('indoc_id', 'short')}</Hint></th>
                 <th className="th">2-я колонка буфера</th>
+                <th className="th"><Hint text={dict('indoc_state', 'hint')}>{dict('indoc_state', 'short')}</Hint></th>
                 <th className="th"><Hint text={dict('indoc_type_descrip', 'hint')}>{dict('indoc_type_descrip', 'short')}</Hint></th>
                 <th className="th"><Hint text={dict('indoc_txt', 'hint')}>{dict('indoc_txt', 'short')}</Hint></th>
+                <th className="th"><Hint text={dict('created_at', 'hint')}>{dict('created_at', 'short')}</Hint></th>
               </tr>
             </thead>
             {mergedRows.map((row) =>
@@ -379,7 +379,8 @@ export default function IndocsListPage() {
                 >
                   <tr className="group-hover:bg-gray-50 transition-colors">
                     <td className="td text-gray-400 text-xs">{row.rowNum}</td>
-                    <td className="td text-gray-500">{new Date(row.item.created_at).toLocaleString()}</td>
+                    <td className="td font-medium text-primary-600">{row.item.indoc_id}</td>
+                    <td className="td text-gray-500 max-w-xs truncate">{row.note || '—'}</td>
                     <td className="td">
                       {row.item.indoc_state_descrip && (
                         <span className={`badge ${INDOC_STATE_COLORS[row.item.indoc_state!] ?? 'bg-gray-100 text-gray-600'}`}>
@@ -387,10 +388,9 @@ export default function IndocsListPage() {
                         </span>
                       )}
                     </td>
-                    <td className="td font-medium text-primary-600">{row.item.indoc_id}</td>
-                    <td className="td text-gray-500 max-w-xs truncate">{row.note || '—'}</td>
                     <td className="td text-gray-500">{row.item.indoc_type_descrip}</td>
                     <td className="td text-gray-500 max-w-xs truncate">{row.item.indoc_txt ?? '—'}</td>
+                    <td className="td text-gray-500">{new Date(row.item.created_at).toLocaleString()}</td>
                   </tr>
                   <OutdocsRow outdocs={row.item.outdocs} colSpan={7} />
                 </tbody>
@@ -398,13 +398,12 @@ export default function IndocsListPage() {
                 <tbody key={row.rowNum} className="border-t border-gray-200 bg-red-50">
                   <tr>
                     <td className="td text-gray-400 text-xs">{row.rowNum}</td>
-                    <td className="td text-gray-400">—</td>
+                    <td className="td font-medium text-gray-500">{row.indoc_id}</td>
+                    <td className="td text-gray-500 max-w-xs truncate">{row.note || '—'}</td>
                     <td className="td">
                       <span className="badge bg-red-100 text-red-600">Не найден</span>
                     </td>
-                    <td className="td font-medium text-gray-500">{row.indoc_id}</td>
-                    <td className="td text-gray-500 max-w-xs truncate">{row.note || '—'}</td>
-                    <td className="td" colSpan={2} />
+                    <td className="td" colSpan={3} />
                   </tr>
                 </tbody>
               ),
@@ -415,7 +414,7 @@ export default function IndocsListPage() {
           <table className="min-w-full border-collapse">
             <thead className="bg-gray-50">
               <tr>
-                {(['created_at'] as SortKey[]).map((key) => (
+                {(['indoc_id'] as SortKey[]).map((key) => (
                   <th key={key} className="th cursor-pointer select-none hover:bg-gray-100" onClick={() => handleSort(key)}>
                     <Hint text={dict(key, 'hint')}><span>{dict(key, 'short')}</span></Hint>
                     <SortIcon active={sortKey === key} dir={sortDir} />
@@ -425,7 +424,7 @@ export default function IndocsListPage() {
                   <Hint text={dict('indoc_state', 'hint')}><span>{dict('indoc_state', 'short')}</span></Hint>
                   <SortIcon active={sortKey === 'indoc_state'} dir={sortDir} />
                 </th>
-                {(['indoc_id', 'indoc_type_descrip', 'indoc_txt'] as SortKey[]).map((key) => (
+                {(['indoc_type_descrip', 'indoc_txt', 'created_at'] as SortKey[]).map((key) => (
                   <th key={key} className="th cursor-pointer select-none hover:bg-gray-100" onClick={() => handleSort(key)}>
                     <Hint text={dict(key, 'hint')}><span>{dict(key, 'short')}</span></Hint>
                     <SortIcon active={sortKey === key} dir={sortDir} />
@@ -440,7 +439,7 @@ export default function IndocsListPage() {
                 onClick={() => { if (isTextSelected()) return; navigate(`/indocs/${encodeURIComponent(item.indoc_id)}`, { state: { item } }) }}
               >
                 <tr className="group-hover:bg-gray-50 transition-colors">
-                  <td className="td text-gray-500">{new Date(item.created_at).toLocaleString()}</td>
+                  <td className="td font-medium text-primary-600">{item.indoc_id}</td>
                   <td className="td">
                     {item.indoc_state_descrip && (
                       <span className={`badge ${INDOC_STATE_COLORS[item.indoc_state!] ?? 'bg-gray-100 text-gray-600'}`}>
@@ -448,9 +447,9 @@ export default function IndocsListPage() {
                       </span>
                     )}
                   </td>
-                  <td className="td font-medium text-primary-600">{item.indoc_id}</td>
                   <td className="td text-gray-500">{item.indoc_type_descrip}</td>
                   <td className="td text-gray-500 max-w-xs truncate">{item.indoc_txt ?? '—'}</td>
+                  <td className="td text-gray-500">{new Date(item.created_at).toLocaleString()}</td>
                 </tr>
                 <OutdocsRow outdocs={item.outdocs} colSpan={5} />
               </tbody>

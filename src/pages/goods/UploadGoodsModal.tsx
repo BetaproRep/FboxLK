@@ -25,9 +25,10 @@ interface Alert {
 interface Props {
   isOpen: boolean
   onClose: () => void
+  onUploaded?: (goodIds: string[]) => void
 }
 
-export default function UploadGoodsModal({ isOpen, onClose }: Props) {
+export default function UploadGoodsModal({ isOpen, onClose, onUploaded }: Props) {
   const qc = useQueryClient()
   const { confirm, confirmNode } = useConfirmDialog()
   const [entries, setEntries] = useState<GoodEntry[]>([])
@@ -107,8 +108,12 @@ export default function UploadGoodsModal({ isOpen, onClose }: Props) {
   }
 
   const mutation = useMutation({
-    mutationFn: () => goodsApi.create(entries.map((e) => e.good)),
-    onSuccess: () => {
+    mutationFn: (goods: GoodItem[]) => goodsApi.create(goods),
+    onSuccess: (_, goods) => {
+      const uploadedIds = goods
+        .map((good) => String(good.good_id ?? '').trim())
+        .filter(Boolean)
+      onUploaded?.(uploadedIds)
       toast.success('Номенклатура загружена')
       qc.invalidateQueries({ queryKey: ['goods'] })
       handleClose()
@@ -129,7 +134,7 @@ export default function UploadGoodsModal({ isOpen, onClose }: Props) {
       setAlert({ type: 'error', message: 'Исправьте ошибки разбора перед загрузкой' })
       return
     }
-    mutation.mutate()
+    mutation.mutate(entries.map((e) => e.good))
   }
 
   function handleClose() {

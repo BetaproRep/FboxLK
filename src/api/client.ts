@@ -4,8 +4,19 @@ import { getBasicAuth, clearCredentials } from '@/store/auth'
 
 const runtimeBaseUrl = window.__APP_CONFIG__?.API_BASE_URL?.trim()
 const buildTimeBaseUrl = import.meta.env.VITE_API_BASE_URL?.trim()
-const apiBaseUrl =
-  runtimeBaseUrl || buildTimeBaseUrl || 'http://lpwtst.betta.ru:8084/grh/api'
+
+function normalizeApiBaseUrl(url: string): string {
+  // Prevent mixed-content in production: when app is loaded over HTTPS,
+  // force HTTP API base URLs to HTTPS.
+  if (window.location.protocol === 'https:' && url.startsWith('http://')) {
+    return `https://${url.slice('http://'.length)}`
+  }
+  return url
+}
+
+const rawApiBaseUrl =
+  runtimeBaseUrl || buildTimeBaseUrl || 'https://lpw.betta.ru:8084/grh/api'
+const apiBaseUrl = normalizeApiBaseUrl(rawApiBaseUrl)
 
 export const apiClient = axios.create({
   baseURL: apiBaseUrl,

@@ -36,4 +36,12 @@
   .td {
     @apply px-4 py-3 text-sm text-gray-900;
   }
+
+  /* Temporary attention cue for hash navigation in Help page. */
+  .help-anchor-highlight {
+    background-color: #dbeafe;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.28);
+    border-radius: 6px;
+    transition: background-color 0.35s ease, box-shadow 0.35s ease;
+  }
 }

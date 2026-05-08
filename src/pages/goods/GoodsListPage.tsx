@@ -19,6 +19,11 @@ type SortDir = 'asc' | 'desc'
 type ClipboardRow = { rowNum: number; good_id: string; note: string }
 type MergedRow = ClipboardRow & { item: GoodListItem | null }
 
+function formatDims(item: Pick<GoodListItem, 'length' | 'width' | 'height'>): string {
+  const hasDims = [item.length, item.width, item.height].every((v) => v != null)
+  return hasDims ? `${item.length} × ${item.width} × ${item.height} мм` : '—'
+}
+
 function parseClipboard(text: string): ClipboardRow[] {
   const rows: ClipboardRow[] = []
   const lines = text.split(/\r?\n/)
@@ -106,6 +111,22 @@ export default function GoodsListPage() {
 
   function clearClipboardMode() {
     updateClipboardRows(null)
+    setAllItems([])
+    setPageToken(undefined)
+  }
+
+  function handleUploadedGoods(goodIds: string[]) {
+    const normalizedIds = goodIds
+      .map((id) => id.trim())
+      .filter(Boolean)
+    const uniqueIds = [...new Set(normalizedIds)]
+    const rows: ClipboardRow[] = uniqueIds.map((good_id, index) => ({
+      rowNum: index + 1,
+      good_id,
+      note: '',
+    }))
+    updateClipboardRows(rows.length > 0 ? rows : null)
+    setClipboardError(null)
     setAllItems([])
     setPageToken(undefined)
   }
@@ -340,8 +361,9 @@ export default function GoodsListPage() {
                 <th className="th">2-я колонка буфера</th>
                 <th className="th"><Hint text={dict('good_name', 'hint')}>{dict('good_name', 'short')}</Hint></th>
                 <th className="th"><Hint text={dict('good_type', 'hint')}>{dict('good_type', 'short')}</Hint></th>
-                <th className="th"><Hint text={dict('gtr_name', 'hint')}>{dict('gtr_name', 'short')}</Hint></th>
                 <th className="th"><Hint text={dict('weight', 'hint')}>{dict('weight', 'short')}</Hint></th>
+                <th className="th"><Hint text={dict('dims', 'hint')}>{dict('dims', 'short')}</Hint></th>
+                <th className="th"><Hint text={dict('gtr_name', 'hint')}>{dict('gtr_name', 'short')}</Hint></th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
@@ -357,15 +379,16 @@ export default function GoodsListPage() {
                     <td className="td text-gray-500 max-w-xs truncate">{row.note || '—'}</td>
                     <td className="td font-medium">{row.item.good_name}</td>
                     <td className="td text-gray-500">{row.item.good_type_name}</td>
-                    <td className="td text-gray-500">{row.item.gtr_name ?? '—'}</td>
                     <td className="td text-gray-500">{row.item.weight ?? '—'}</td>
+                    <td className="td text-gray-500">{formatDims(row.item)}</td>
+                    <td className="td text-gray-500">{row.item.gtr_name ?? '—'}</td>
                   </tr>
                 ) : (
                   <tr key={row.rowNum} className="bg-red-50">
                     <td className="td text-gray-400 text-xs">{row.rowNum}</td>
                     <td className="td font-mono text-sm text-gray-500">{row.good_id}</td>
                     <td className="td text-gray-500 max-w-xs truncate">{row.note || '—'}</td>
-                    <td className="td" colSpan={4}>
+                    <td className="td" colSpan={5}>
                       <span className="badge bg-red-100 text-red-600">Не найден</span>
                     </td>
                   </tr>
@@ -378,7 +401,7 @@ export default function GoodsListPage() {
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
-                {(['good_id', 'good_name', 'good_type_name', 'gtr_name', 'weight'] as SortKey[]).map((key) => {
+                {(['good_id', 'good_name', 'good_type_name', 'weight'] as SortKey[]).map((key) => {
                   const dictKey = key === 'good_type_name' ? 'good_type' : key
                   return (
                     <th
@@ -393,6 +416,11 @@ export default function GoodsListPage() {
                     </th>
                   )
                 })}
+                <th className="th"><Hint text={dict('dims', 'hint')}>{dict('dims', 'short')}</Hint></th>
+                <th className="th cursor-pointer select-none hover:bg-gray-100" onClick={() => handleSort('gtr_name')}>
+                  <Hint text={dict('gtr_name', 'hint')}><span>{dict('gtr_name', 'short')}</span></Hint>
+                  <SortIcon active={sortKey === 'gtr_name'} dir={sortDir} />
+                </th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
@@ -405,8 +433,9 @@ export default function GoodsListPage() {
                   <td className="td font-mono text-sm text-primary-600">{item.good_id}</td>
                   <td className="td font-medium">{item.good_name}</td>
                   <td className="td text-gray-500">{item.good_type_name}</td>
-                  <td className="td text-gray-500">{item.gtr_name ?? '—'}</td>
                   <td className="td text-gray-500">{item.weight ?? '—'}</td>
+                  <td className="td text-gray-500">{formatDims(item)}</td>
+                  <td className="td text-gray-500">{item.gtr_name ?? '—'}</td>
                 </tr>
               ))}
             </tbody>
@@ -426,7 +455,11 @@ export default function GoodsListPage() {
         )}
       </div>
 
-      <UploadGoodsModal isOpen={showUpload} onClose={() => setShowUpload(false)} />
+      <UploadGoodsModal
+        isOpen={showUpload}
+        onClose={() => setShowUpload(false)}
+        onUploaded={handleUploadedGoods}
+      />
     </>
   )
 }
