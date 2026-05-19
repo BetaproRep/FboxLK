@@ -7,6 +7,9 @@ import DownloadFilesModal from '@/components/ui/DownloadFilesModal'
 import { goodsApi } from '@/api/goods'
 import type { GoodDetail } from '@/types/good'
 import Modal from '@/components/ui/Modal'
+import InlineHelpPanel, { HelpIconButton } from '@/components/ui/InlineHelpPanel'
+import { getTabHelp } from '@/content/pageHelp'
+import { usePageHelpWriterMode } from '@/content/authoringState'
 import { useConfirmDialog } from '@/components/ui/ConfirmDialog'
 import FormAlert from '@/components/ui/FormAlert'
 import Spinner from '@/components/ui/Spinner'
@@ -72,6 +75,8 @@ interface ItemRow {
 
 const emptyItem = (): ItemRow => ({ good_id: '', plan_qnt: '1' })
 
+const FORM_HELP_TAB = 'create-goods-shipment'
+
 interface Alert {
   type: 'error' | 'success' | 'warning'
   message: string
@@ -81,6 +86,14 @@ export default function CreateGoodsShipmentTask({ isOpen, onClose }: Props) {
   const qc = useQueryClient()
   const navigate = useNavigate()
   const { confirm, confirmNode } = useConfirmDialog()
+  const writerMode = usePageHelpWriterMode()
+  const formHelp = getTabHelp('indocs', FORM_HELP_TAB)
+  const [formHelpOpen, setFormHelpOpen] = useState(false)
+
+  useEffect(() => {
+    if (isOpen && writerMode) setFormHelpOpen(true)
+  }, [isOpen, writerMode])
+
   const [indocId, setIndocId] = useState('')
   const [indocTxt, setIndocTxt] = useState('')
   const [qualType, setQualType] = useState<'useful' | 'defective'>('useful')
@@ -241,18 +254,32 @@ export default function CreateGoodsShipmentTask({ isOpen, onClose }: Props) {
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title="Задание на отгрузку товаров"
-      size="xl"
-      headerActions={
+      title={
         <>
-          <button type="submit" form="create-goods-shipment-form" className="btn-primary" disabled={mutation.isPending}>
-            {mutation.isPending && <Spinner className="w-4 h-4 text-white" />}
-            Создать документ
-          </button>
+          {(writerMode || formHelp) && (
+            <HelpIconButton
+              onClick={() => setFormHelpOpen((v) => !v)}
+              title="Пояснение к форме"
+            />
+          )}
+          <span>Задание на отгрузку товаров</span>
         </>
       }
+      size="xl"
     >
       <form id="create-goods-shipment-form" onSubmit={handleSubmit} className="flex flex-col flex-1 overflow-hidden">
+        {(writerMode || formHelp) && (
+          <InlineHelpPanel
+            content={formHelp?.content ?? ''}
+            marker={`tab:indocs:${FORM_HELP_TAB}`}
+            markerTemplate={`### Задание на отгрузку товаров {#tab:indocs:${FORM_HELP_TAB}}`}
+            isOpen={formHelpOpen}
+            onClose={() => setFormHelpOpen(false)}
+            isAuthoringMode={writerMode}
+            className="mb-4 shrink-0"
+          />
+        )}
+
         {alert && (
           <div className="mb-4 shrink-0">
             <FormAlert type={alert.type} message={alert.message} onClose={() => setAlert(null)} />
@@ -362,6 +389,15 @@ export default function CreateGoodsShipmentTask({ isOpen, onClose }: Props) {
               <button type="button" className="text-sm text-primary-600 hover:text-primary-700" onClick={addItem}>
                 + Добавить позицию
               </button>
+              {(items.length > 1 || items.some((r) => r.good_id.trim())) && (
+                <button
+                  type="button"
+                  className="text-sm text-red-400 hover:text-red-600"
+                  onClick={() => { setItems([emptyItem()]); setJsonViewIdx(null); setShowErrors(false) }}
+                >
+                  Очистить список
+                </button>
+              )}
             </div>
           </div>
 
@@ -432,6 +468,12 @@ export default function CreateGoodsShipmentTask({ isOpen, onClose }: Props) {
           </div>
         </div>
 
+        <div className="border-t mt-4 pt-4 shrink-0 flex justify-end">
+          <button type="submit" className="btn-primary" disabled={mutation.isPending}>
+            {mutation.isPending && <Spinner className="w-4 h-4 text-white" />}
+            Создать документ
+          </button>
+        </div>
       </form>
     </Modal>
 

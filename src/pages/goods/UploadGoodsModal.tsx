@@ -1,10 +1,13 @@
-import { useState, FormEvent } from 'react'
+import { useState, useEffect, FormEvent } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import toast from 'react-hot-toast'
 import { goodsApi } from '@/api/goods'
 import { parseTemplate } from '@/utils/templateParser'
 import type { ParseError } from '@/utils/templateParser'
 import Modal from '@/components/ui/Modal'
+import InlineHelpPanel, { HelpIconButton } from '@/components/ui/InlineHelpPanel'
+import { getTabHelp } from '@/content/pageHelp'
+import { usePageHelpWriterMode } from '@/content/authoringState'
 import FormAlert from '@/components/ui/FormAlert'
 import Spinner from '@/components/ui/Spinner'
 import DownloadFilesModal from '@/components/ui/DownloadFilesModal'
@@ -28,9 +31,19 @@ interface Props {
   onUploaded?: (goodIds: string[]) => void
 }
 
+const FORM_HELP_TAB = 'upload-goods'
+
 export default function UploadGoodsModal({ isOpen, onClose, onUploaded }: Props) {
   const qc = useQueryClient()
   const { confirm, confirmNode } = useConfirmDialog()
+  const writerMode = usePageHelpWriterMode()
+  const formHelp = getTabHelp('goods', FORM_HELP_TAB)
+  const [formHelpOpen, setFormHelpOpen] = useState(false)
+
+  useEffect(() => {
+    if (isOpen && writerMode) setFormHelpOpen(true)
+  }, [isOpen, writerMode])
+
   const [entries, setEntries] = useState<GoodEntry[]>([])
   const [jsonViewIdx, setJsonViewIdx] = useState<number | null>(null)
   const [alert, setAlert] = useState<Alert | null>(null)
@@ -151,21 +164,32 @@ export default function UploadGoodsModal({ isOpen, onClose, onUploaded }: Props)
       <Modal
         isOpen={isOpen}
         onClose={handleClose}
-        title="Загрузка номенклатуры"
-        size="xl"
-        headerActions={
-          <button
-            type="submit"
-            form="upload-goods-form"
-            className="btn-primary"
-            disabled={mutation.isPending}
-          >
-            {mutation.isPending && <Spinner className="w-4 h-4 text-white" />}
-            Загрузить
-          </button>
+        title={
+          <>
+            {(writerMode || formHelp) && (
+              <HelpIconButton
+                onClick={() => setFormHelpOpen((v) => !v)}
+                title="Пояснение к форме"
+              />
+            )}
+            <span>Загрузка номенклатуры</span>
+          </>
         }
+        size="xl"
       >
         <form id="upload-goods-form" onSubmit={handleSubmit} className="flex flex-col flex-1 overflow-hidden">
+          {(writerMode || formHelp) && (
+            <InlineHelpPanel
+              content={formHelp?.content ?? ''}
+              marker={`tab:goods:${FORM_HELP_TAB}`}
+              markerTemplate={`### Загрузка номенклатуры {#tab:goods:${FORM_HELP_TAB}}`}
+              isOpen={formHelpOpen}
+              onClose={() => setFormHelpOpen(false)}
+              isAuthoringMode={writerMode}
+              className="mb-4 shrink-0"
+            />
+          )}
+
           {alert && (
             <div className="mb-4 shrink-0">
               <FormAlert type={alert.type} message={alert.message} onClose={() => setAlert(null)} />
@@ -262,6 +286,13 @@ export default function UploadGoodsModal({ isOpen, onClose, onUploaded }: Props)
                 </div>
               </>
             )}
+          </div>
+
+          <div className="border-t mt-4 pt-4 shrink-0 flex justify-end">
+            <button type="submit" className="btn-primary" disabled={mutation.isPending}>
+              {mutation.isPending && <Spinner className="w-4 h-4 text-white" />}
+              Загрузить
+            </button>
           </div>
         </form>
       </Modal>

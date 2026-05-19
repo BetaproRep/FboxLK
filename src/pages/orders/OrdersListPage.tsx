@@ -7,6 +7,9 @@ import { useQuery } from '@tanstack/react-query'
 import { ordersApi } from '@/api/orders'
 import type { OrderListItem } from '@/types/order'
 import PageHeader from '@/components/ui/PageHeader'
+import InlineHelpPanel, { HelpIconButton } from '@/components/ui/InlineHelpPanel'
+import { getPageHelp } from '@/content/pageHelp'
+import { usePageHelpWriterMode } from '@/content/authoringState'
 import DateRangeFilter from '@/components/ui/DateRangeFilter'
 import EmptyState from '@/components/ui/EmptyState'
 import Spinner from '@/components/ui/Spinner'
@@ -46,6 +49,13 @@ function parseClipboard(text: string): ClipboardRow[] {
 
 export default function OrdersListPage() {
   const navigate = useNavigate()
+  const writerMode = usePageHelpWriterMode()
+  const pageHelp = getPageHelp('orders')
+  const [pageHelpOpen, setPageHelpOpen] = useState(false)
+
+  useEffect(() => {
+    if (writerMode) setPageHelpOpen(true)
+  }, [writerMode])
 
   const [dateFrom, setDateFrom] = useState(() => sessionStorage.getItem('orders_date_from') ?? defaultDateFrom())
   const [dateTo, setDateTo] = useState(() => sessionStorage.getItem('orders_date_to') ?? new Date().toISOString().slice(0, 10))
@@ -254,7 +264,26 @@ export default function OrdersListPage() {
 
   return (
     <>
-      <PageHeader title="Заказы" />
+      <PageHeader
+        title={
+          <>
+            {(writerMode || pageHelp) && <HelpIconButton onClick={() => setPageHelpOpen((v) => !v)} size="lg" />}
+            <span>Заказы</span>
+          </>
+        }
+      />
+
+      {(writerMode || pageHelp) && (
+        <InlineHelpPanel
+          content={pageHelp?.content ?? ''}
+          marker="page:orders"
+          markerTemplate="## Заказы {#page:orders}"
+          isOpen={pageHelpOpen}
+          onClose={() => setPageHelpOpen(false)}
+          isAuthoringMode={writerMode}
+          className="-mt-4 mb-4"
+        />
+      )}
 
       <div className="card p-4 mb-6 flex flex-wrap items-center gap-4">
         {/* Clipboard: badge или кнопка */}

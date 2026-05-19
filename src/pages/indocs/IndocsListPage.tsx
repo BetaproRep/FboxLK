@@ -7,6 +7,9 @@ import * as XLSX from 'xlsx'
 import { indocsApi } from '@/api/indocs'
 import type { WebIndocListItem } from '@/types/indoc'
 import PageHeader from '@/components/ui/PageHeader'
+import InlineHelpPanel, { HelpIconButton } from '@/components/ui/InlineHelpPanel'
+import { getPageHelp } from '@/content/pageHelp'
+import { usePageHelpWriterMode } from '@/content/authoringState'
 import DateRangeFilter from '@/components/ui/DateRangeFilter'
 import EmptyState from '@/components/ui/EmptyState'
 import Spinner from '@/components/ui/Spinner'
@@ -52,6 +55,13 @@ function parseClipboard(text: string): ClipboardRow[] {
 
 export default function IndocsListPage() {
   const navigate = useNavigate()
+  const writerMode = usePageHelpWriterMode()
+  const pageHelp = getPageHelp('indocs')
+  const [pageHelpOpen, setPageHelpOpen] = useState(false)
+
+  useEffect(() => {
+    if (writerMode) setPageHelpOpen(true)
+  }, [writerMode])
   const [dateFrom, setDateFrom] = useState(() => sessionStorage.getItem('indocs_date_from') ?? defaultDateFrom())
   const [dateTo, setDateTo] = useState(() => sessionStorage.getItem('indocs_date_to') ?? new Date().toISOString().slice(0, 10))
   const [pageToken, setPageToken] = useState<string | undefined>()
@@ -243,7 +253,12 @@ export default function IndocsListPage() {
   return (
     <>
       <PageHeader
-        title="Входящие документы"
+        title={
+          <>
+            {(writerMode || pageHelp) && <HelpIconButton onClick={() => setPageHelpOpen((v) => !v)} size="lg" />}
+            <span>Входящие документы</span>
+          </>
+        }
         actions={
           <div className="flex gap-2">
             <button className="btn-primary" onClick={() => setShowCreateSupply(true)}>
@@ -258,6 +273,18 @@ export default function IndocsListPage() {
           </div>
         }
       />
+
+      {(writerMode || pageHelp) && (
+        <InlineHelpPanel
+          content={pageHelp?.content ?? ''}
+          marker="page:indocs"
+          markerTemplate="## Входящие документы {#page:indocs}"
+          isOpen={pageHelpOpen}
+          onClose={() => setPageHelpOpen(false)}
+          isAuthoringMode={writerMode}
+          className="-mt-4 mb-4"
+        />
+      )}
 
       <div className="card p-4 mb-6 flex flex-wrap items-center gap-4">
         {/* Clipboard: badge или кнопка */}

@@ -1,23 +1,31 @@
 import type { DashboardTableRow, PeriodKey } from '@/api/dashboard'
 import { fmt } from '../utils/fmt'
+import { getSeriesColor } from '../utils/seriesPalette'
 
 interface Props {
   title: string
   rows: DashboardTableRow[]
   unitsHint?: string
+  mergeWithNext?: boolean
 }
 
 const COLS: Array<{ key: PeriodKey; label: string }> = [
   { key: 'today',      label: 'Сегодня' },
+  { key: 'yesterday',  label: 'Вчера' },
   { key: 'this_week',  label: 'Неделя' },
   { key: 'prev_week',  label: 'Пр. неделя' },
   { key: 'this_month', label: 'Месяц' },
   { key: 'prev_month', label: 'Пр. месяц' },
 ]
 
-export default function PeriodTable({ title, rows, unitsHint }: Props) {
+export default function PeriodTable({ title, rows, unitsHint, mergeWithNext = false }: Props) {
   return (
-    <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+    <div
+      className={
+        'bg-white border border-gray-200 overflow-hidden ' +
+        (mergeWithNext ? 'rounded-t-lg rounded-b-none border-b-0' : 'rounded-lg')
+      }
+    >
       <div className="px-4 py-3 border-b border-gray-200 bg-gray-50 flex items-baseline justify-between">
         <h3 className="text-sm font-semibold text-gray-900">{title}</h3>
         {unitsHint && <span className="text-xs text-gray-500">{unitsHint}</span>}
@@ -36,7 +44,14 @@ export default function PeriodTable({ title, rows, unitsHint }: Props) {
         <tbody>
           {rows.map((row, idx) => (
             <tr key={row.key} className={idx < rows.length - 1 ? 'border-b border-gray-100' : ''}>
-              <td className="px-4 py-2.5 text-gray-600">{row.label}</td>
+              <td className="px-4 py-2.5 text-gray-600">
+                <span
+                  className="inline-block border-b-2 pb-px"
+                  style={{ borderBottomColor: getSeriesColor(idx) }}
+                >
+                  {row.label}
+                </span>
+              </td>
               {COLS.map((c) => {
                 const v = row.values[c.key] ?? 0
                 return (

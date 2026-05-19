@@ -9,6 +9,9 @@ import { ordersApi } from '@/api/orders'
 import type { GoodDetail, GoodStock } from '@/types/good'
 import type { OrderListItem } from '@/types/order'
 import PageHeader from '@/components/ui/PageHeader'
+import InlineHelpPanel, { HelpIconButton } from '@/components/ui/InlineHelpPanel'
+import { getPageHelp, getTabHelp } from '@/content/pageHelp'
+import { usePageHelpWriterMode } from '@/content/authoringState'
 import PropList from '@/components/ui/PropList'
 import type { PropItem } from '@/components/ui/PropList'
 import EmptyState from '@/components/ui/EmptyState'
@@ -23,6 +26,17 @@ type OrdSortKey = 'order_id' | 'created_at' | 'state' | 'clnt_name' | 'delivery_
 
 type Tab = 'info' | 'movements' | 'orders' | 'eans' | 'photos' | 'sn'
 
+const PAGE_HELP_KEY = 'good-detail'
+
+const TAB_HELP_TITLES: Record<Tab, string> = {
+  info: 'Атрибуты',
+  movements: 'Движение',
+  orders: 'Заказы',
+  eans: 'EAN',
+  photos: 'Фото',
+  sn: 'Серийные номера',
+}
+
 export default function GoodDetailPage() {
   const { id } = useParams<{ id: string }>()
   const goodId = decodeURIComponent(id!)
@@ -34,6 +48,20 @@ export default function GoodDetailPage() {
     sessionStorage.setItem(tabKey, t)
     setTab(t)
   }
+
+  const writerMode = usePageHelpWriterMode()
+  const pageHelp = getPageHelp(PAGE_HELP_KEY)
+  const [pageHelpOpen, setPageHelpOpen] = useState(false)
+  const tabHelp = getTabHelp(PAGE_HELP_KEY, tab)
+  const [tabHelpOpen, setTabHelpOpen] = useState(false)
+
+  useEffect(() => {
+    if (writerMode) setPageHelpOpen(true)
+  }, [writerMode])
+
+  useEffect(() => {
+    if (writerMode) setTabHelpOpen(true)
+  }, [tab, writerMode])
 
   const { data: goodResp, isLoading } = useQuery({
     queryKey: ['good', goodId],
@@ -261,10 +289,29 @@ export default function GoodDetailPage() {
   return (
     <>
       <PageHeader
-        title={`${dictEnum('good_type', good.good_type)}: ${good.good_name}`}
+        title={
+          <>
+            {(writerMode || pageHelp) && (
+              <HelpIconButton onClick={() => setPageHelpOpen((v) => !v)} size="lg" title="Пояснение к карточке товара" />
+            )}
+            {`${dictEnum('good_type', good.good_type)}: ${good.good_name}`}
+          </>
+        }
         subtitle={<PropList items={propItems} className="text-sm text-gray-500 mt-0.5" />
         }
       />
+
+      {(writerMode || pageHelp) && (
+        <InlineHelpPanel
+          content={pageHelp?.content ?? ''}
+          marker={`page:${PAGE_HELP_KEY}`}
+          markerTemplate={`## Карточка товара {#page:${PAGE_HELP_KEY}}`}
+          isOpen={pageHelpOpen}
+          onClose={() => setPageHelpOpen(false)}
+          isAuthoringMode={writerMode}
+          className="-mt-4 mb-4"
+        />
+      )}
 
       {/* Остатки и резервы */}
       <div className="card overflow-hidden mb-6">
@@ -311,20 +358,44 @@ export default function GoodDetailPage() {
       </div>
 
       <div className="flex gap-1 mb-4 border-b border-gray-200 overflow-x-auto">
-        {tabs.map(({ key, label }) => (
-          <button
-            key={key}
-            onClick={() => handleSetTab(key)}
-            className={`px-4 py-2 text-sm font-medium whitespace-nowrap border-b-2 transition-colors ${
-              tab === key
-                ? 'border-primary-600 text-primary-600'
-                : 'border-transparent text-gray-500 hover:text-gray-700'
-            }`}
-          >
-            {label}
-          </button>
-        ))}
+        {tabs.map(({ key, label }) => {
+          const isActive = tab === key
+          const helpForTab = getTabHelp(PAGE_HELP_KEY, key)
+          return (
+            <button
+              key={key}
+              type="button"
+              onClick={() => handleSetTab(key)}
+              className={`inline-flex items-center gap-0.5 px-4 py-2 text-sm font-medium whitespace-nowrap border-b-2 transition-colors ${
+                isActive
+                  ? 'border-primary-600 text-primary-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700'
+              }`}
+            >
+              {isActive && (writerMode || helpForTab) && (
+                <HelpIconButton
+                  asSpan
+                  onClick={() => setTabHelpOpen((v) => !v)}
+                  title={`Пояснение: ${label}`}
+                />
+              )}
+              {label}
+            </button>
+          )
+        })}
       </div>
+
+      {(writerMode || tabHelp) && (
+        <InlineHelpPanel
+          content={tabHelp?.content ?? ''}
+          marker={`tab:${PAGE_HELP_KEY}:${tab}`}
+          markerTemplate={`### ${TAB_HELP_TITLES[tab]} {#tab:${PAGE_HELP_KEY}:${tab}}`}
+          isOpen={tabHelpOpen}
+          onClose={() => setTabHelpOpen(false)}
+          isAuthoringMode={writerMode}
+          className="mb-4"
+        />
+      )}
 
       {tab === 'info' && (
         <div className="card overflow-hidden">

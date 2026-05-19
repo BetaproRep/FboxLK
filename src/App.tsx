@@ -16,6 +16,7 @@ import QuickStartPage from '@/pages/quickstart/QuickStartPage'
 import V3CardsGrid from '@/pages/quickstart/variants/V3CardsGrid'
 import HelpPage from '@/pages/help/HelpPage'
 import V2Tabs from '@/pages/help/variants/V2Tabs'
+import AuthoringPage from '@/pages/authoring/AuthoringPage'
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated } = useAuth()
@@ -54,6 +55,7 @@ export default function App() {
             <Route path="v2" element={<V2Tabs />} />
             <Route path="*" element={<Navigate to="/help" replace />} />
           </Route>
+          <Route path="authoring" element={<AuthoringPage />} />
 
           <Route path="indocs" element={<IndocsListPage />} />
           <Route path="indocs/:id" element={<IndocDetailPage />} />

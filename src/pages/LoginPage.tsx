@@ -1,7 +1,7 @@
 import { useState, FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '@/store/auth'
-import { apiClient } from '@/api/client'
+import { validateLoginCredentials } from '@/api/settings'
 import Spinner from '@/components/ui/Spinner'
 
 export default function LoginPage() {
@@ -19,8 +19,8 @@ export default function LoginPage() {
     try {
       // Set credentials first, then test with /settings
       setCredentials(partnerId.trim(), password)
-      await apiClient.get('/settings')
-      navigate('/')
+      await validateLoginCredentials()
+      navigate('/', { replace: true })
     } catch {
       setError('Неверный код партнёра или пароль')
       // Clear credentials on failure

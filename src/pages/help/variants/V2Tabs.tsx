@@ -1,35 +1,116 @@
-import { useEffect, useMemo, useRef, useState, type ChangeEventHandler } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
-import { findSectionIn, HELP_OVERRIDE_STORAGE_KEY, helpMarkdownDefault, helpSections, parseHelpSections } from '../helpManifest'
+import { findSectionIn, helpSections, helpMarkdownDefault, parseHelpSections } from '../helpManifest'
 import MarkdownView from '../components/MarkdownView'
+import InlineHelpPanel, { HelpIconButton } from '@/components/ui/InlineHelpPanel'
+import { getTabHelp } from '@/content/pageHelp'
+import { getMarkdownWithOverride, HELP_OVERRIDE_STORAGE_KEY, usePageHelpWriterMode } from '@/content/authoringState'
+
+const MAIN_SCROLL_ID = 'app-scroll-main'
+const SCROLL_STORAGE_PREFIX = 'portal-main-scroll:'
+const HELP_RETURN_KEY = 'portal-help-return'
+
+function scrollStorageKey(loc: Pick<Location, 'pathname' | 'search' | 'hash'>): string {
+  return `${SCROLL_STORAGE_PREFIX}${loc.pathname}${loc.search}${loc.hash}`
+}
+
+function readHelpReturn(): { search: string; hash: string } | null {
+  try {
+    const raw = sessionStorage.getItem(HELP_RETURN_KEY)
+    if (!raw) return null
+    const o = JSON.parse(raw) as { search?: string; hash?: unknown }
+    if (typeof o.search !== 'string' || !o.search.includes('tab=')) return null
+    return { search: o.search, hash: typeof o.hash === 'string' ? o.hash : '' }
+  } catch {
+    return null
+  }
+}
+
+function writeHelpReturn(search: string, hash: string) {
+  sessionStorage.setItem(HELP_RETURN_KEY, JSON.stringify({ search, hash }))
+}
+
+function getMainScrollEl(): HTMLElement | null {
+  return document.getElementById(MAIN_SCROLL_ID)
+}
 
 export default function V2Tabs() {
   const [searchParams, setSearchParams] = useSearchParams()
-  const isAuthoringMode = searchParams.get('authoring') === '1'
+  const writerMode = usePageHelpWriterMode()
   const location = useLocation()
   const navigate = useNavigate()
   const clearHighlightTimerRef = useRef<number | null>(null)
-  const fileInputRef = useRef<HTMLInputElement | null>(null)
-
-  const [markdown, setMarkdown] = useState<string>(() => {
-    const fromStorage = sessionStorage.getItem(HELP_OVERRIDE_STORAGE_KEY)
-    return fromStorage ?? helpMarkdownDefault
-  })
-  const [validationErrors, setValidationErrors] = useState<string[]>([])
-  const [infoMessage, setInfoMessage] = useState<string>('')
-
-  const parsed = useMemo(() => parseHelpSections(markdown), [markdown])
+  const markdownSource = getMarkdownWithOverride(helpMarkdownDefault, HELP_OVERRIDE_STORAGE_KEY)
+  const parsed = useMemo(() => parseHelpSections(markdownSource), [markdownSource])
   const sections = parsed.sections.length > 0 ? parsed.sections : helpSections
   const tabId = searchParams.get('tab') ?? sections[0].id
   const section = findSectionIn(sections, tabId)
+  const tabHelp = getTabHelp('help', tabId)
+  const [tabHelpOpen, setTabHelpOpen] = useState(false)
 
   useEffect(() => {
-    if (!searchParams.get('tab') && sections.length > 0) {
+    setTabHelpOpen(writerMode)
+  }, [tabId, writerMode])
+
+  // Восстановить вкладку и якорь после ухода в другой раздел и клика «Справка» (/help без query).
+  useEffect(() => {
+    if (location.pathname !== '/help') return
+    if (searchParams.get('tab')) return
+
+    const saved = readHelpReturn()
+    if (saved) {
+      const qs = saved.search.startsWith('?') ? saved.search.slice(1) : saved.search
+      const sp = new URLSearchParams(qs)
+      const tab = sp.get('tab')
+      if (tab && sections.some((s) => s.id === tab)) {
+        const searchStr = saved.search.startsWith('?') ? saved.search : `?${saved.search}`
+        navigate(
+          { pathname: location.pathname, search: searchStr, hash: saved.hash || '' },
+          { replace: true },
+        )
+        return
+      }
+    }
+    if (sections.length > 0) {
       const next = new URLSearchParams(searchParams)
       next.set('tab', sections[0].id)
       setSearchParams(next, { replace: true })
     }
-  }, [searchParams, sections, setSearchParams])
+  }, [location.pathname, navigate, searchParams, sections, setSearchParams])
+
+  // Запоминаем tab+hash, пока на справке выбрана вкладка (не затираем при промежуточном /help без tab).
+  useEffect(() => {
+    if (location.pathname !== '/help') return
+    if (!searchParams.get('tab')) return
+    writeHelpReturn(location.search, location.hash)
+  }, [location.pathname, location.search, location.hash, searchParams])
+
+  // Сохраняем прокрутку области main при любом уходе с этого URL (вкладка, hash, уход со справки).
+  // Браузерный «Назад» не восстанавливает scroll внутри overflow-main — только window.
+  useEffect(() => {
+    const main = getMainScrollEl()
+    if (!main) return
+    const key = scrollStorageKey(location)
+    return () => {
+      sessionStorage.setItem(key, String(main.scrollTop))
+    }
+  }, [location.pathname, location.search, location.hash])
+
+  // Восстановление прокрутки main для текущего URL (Назад/Вперёд и возврат из других страниц по меню).
+  // При наличии hash позицию задаёт эффект ниже (scrollIntoView).
+  useLayoutEffect(() => {
+    if (location.pathname !== '/help') return
+    if (location.hash) return
+    const main = getMainScrollEl()
+    if (!main) return
+    const raw = sessionStorage.getItem(scrollStorageKey(location))
+    if (raw == null) return
+    const y = Number(raw)
+    if (!Number.isFinite(y)) return
+    requestAnimationFrame(() => {
+      main.scrollTop = y
+    })
+  }, [location.pathname, location.search, location.hash])
 
   // Шаг 1: при hash-якоре сначала выбрать нужную tab, сохранив сам hash.
   useEffect(() => {
@@ -89,99 +170,18 @@ export default function V2Tabs() {
     }
   }, [])
 
-  const errorMessages = parsed.issues.map((issue) => `Строка ${issue.line}: ${issue.message}`)
-
-  const handleReset = () => {
-    sessionStorage.removeItem(HELP_OVERRIDE_STORAGE_KEY)
-    setMarkdown(helpMarkdownDefault)
-    setValidationErrors([])
-    setInfoMessage('Вернули встроенную версию справки.')
-  }
-
-  const handleExport = () => {
-    const blob = new Blob([markdown], { type: 'text/markdown;charset=utf-8' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = 'help.md'
-    a.click()
-    URL.revokeObjectURL(url)
-    setInfoMessage('Markdown выгружен в файл.')
-  }
-
-  const handleImportClick = () => fileInputRef.current?.click()
-
-  const handleImportFile: ChangeEventHandler<HTMLInputElement> = async (event) => {
-    const file = event.target.files?.[0]
-    event.currentTarget.value = ''
-    if (!file) return
-
-    const nextMarkdown = await file.text()
-    const nextParsed = parseHelpSections(nextMarkdown)
-    const issues = nextParsed.issues.map((issue) => `Строка ${issue.line}: ${issue.message}`)
-
-    if (issues.length > 0) {
-      setValidationErrors(issues)
-      setInfoMessage('Импорт отклонён: исправьте ошибки контракта markdown.')
-      return
-    }
-
-    sessionStorage.setItem(HELP_OVERRIDE_STORAGE_KEY, nextMarkdown)
-    setMarkdown(nextMarkdown)
-    setValidationErrors([])
-    setInfoMessage('Новая версия markdown успешно применена в текущей сессии.')
+  // Пока URL без tab (ожидается восстановление или первая вкладка), не показываем контент по умолчанию.
+  if (location.pathname === '/help' && !searchParams.get('tab')) {
+    return <div className="min-h-[200px]" aria-busy="true" />
   }
 
   return (
     <div>
-      {isAuthoringMode && <div className="mb-4 rounded-lg border border-gray-200 bg-white p-4">
-        <div className="flex flex-wrap items-center gap-2">
-          <button
-            type="button"
-            onClick={handleExport}
-            className="px-3 py-1.5 text-sm rounded-md border border-gray-300 text-gray-700 hover:bg-gray-50"
-          >
-            Экспорт md
-          </button>
-          <button
-            type="button"
-            onClick={handleImportClick}
-            className="px-3 py-1.5 text-sm rounded-md border border-gray-300 text-gray-700 hover:bg-gray-50"
-          >
-            Импорт md
-          </button>
-          <button
-            type="button"
-            onClick={handleReset}
-            className="px-3 py-1.5 text-sm rounded-md border border-gray-300 text-gray-700 hover:bg-gray-50"
-          >
-            Сбросить к дефолту
-          </button>
-          <input ref={fileInputRef} type="file" accept=".md,text/markdown,text/plain" onChange={handleImportFile} className="hidden" />
-        </div>
-        {infoMessage && <p className="mt-2 text-xs text-gray-600">{infoMessage}</p>}
-        {errorMessages.length > 0 && (
-          <div className="mt-3 rounded-md border border-amber-300 bg-amber-50 p-3">
-            <p className="text-xs font-medium text-amber-900">Встроенный markdown содержит ошибки контракта:</p>
-            <ul className="mt-1 list-disc pl-5 text-xs text-amber-800">
-              {errorMessages.map((error) => <li key={error}>{error}</li>)}
-            </ul>
-          </div>
-        )}
-        {validationErrors.length > 0 && (
-          <div className="mt-3 rounded-md border border-red-300 bg-red-50 p-3">
-            <p className="text-xs font-medium text-red-900">Ошибки в импортированном markdown:</p>
-            <ul className="mt-1 list-disc pl-5 text-xs text-red-800">
-              {validationErrors.map((error) => <li key={error}>{error}</li>)}
-            </ul>
-          </div>
-        )}
-      </div>}
-
       <div className="border-b border-gray-200 mb-6">
-        <nav className="flex gap-1 -mb-px overflow-x-auto">
+        <nav className="-mb-px flex gap-1 overflow-x-auto">
           {sections.map((s) => {
             const isActive = s.id === tabId
+            const helpForTab = getTabHelp('help', s.id)
             return (
               <button
                 key={s.id}
@@ -191,18 +191,37 @@ export default function V2Tabs() {
                   next.set('tab', s.id)
                   setSearchParams(next)
                 }}
-                className={`px-4 py-2.5 text-sm font-medium border-b-2 whitespace-nowrap transition-colors ${
+                className={`inline-flex items-center gap-0.5 px-4 py-2.5 text-sm font-medium border-b-2 whitespace-nowrap transition-colors ${
                   isActive
                     ? 'border-primary-600 text-primary-700'
                     : 'border-transparent text-gray-600 hover:text-gray-900 hover:border-gray-300'
                 }`}
               >
+                {isActive && (writerMode || helpForTab) && (
+                  <HelpIconButton
+                    asSpan
+                    onClick={() => setTabHelpOpen((v) => !v)}
+                    title={`Пояснение к вкладке ${s.title}`}
+                  />
+                )}
                 {s.title}
               </button>
             )
           })}
         </nav>
       </div>
+
+      {(writerMode || tabHelp) && (
+        <InlineHelpPanel
+          content={tabHelp?.content ?? ''}
+          marker={`tab:help:${tabId}`}
+          markerTemplate={`### ${section.title} {#tab:help:${tabId}}`}
+          isOpen={tabHelpOpen}
+          onClose={() => setTabHelpOpen(false)}
+          isAuthoringMode={writerMode}
+          className="mb-4"
+        />
+      )}
 
       <div className="max-w-3xl bg-white rounded-lg border border-gray-200 p-8">
         <MarkdownView source={section.content} />

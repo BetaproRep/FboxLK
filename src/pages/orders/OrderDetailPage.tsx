@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { isTextSelected } from '@/utils/selection'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
@@ -6,6 +6,9 @@ import toast from 'react-hot-toast'
 import { ordersApi } from '@/api/orders'
 import type { OrderDetail, OrderDetailPltGood } from '@/types/order'
 import PageHeader from '@/components/ui/PageHeader'
+import InlineHelpPanel, { HelpIconButton } from '@/components/ui/InlineHelpPanel'
+import { getPageHelp, getTabHelp } from '@/content/pageHelp'
+import { usePageHelpWriterMode } from '@/content/authoringState'
 import EmptyState from '@/components/ui/EmptyState'
 import Spinner from '@/components/ui/Spinner'
 import PropList from '@/components/ui/PropList'
@@ -16,6 +19,17 @@ import { dict, dictEnum } from '@/constants/dict'
 import Hint from '@/components/ui/Hint'
 
 type Tab = 'goods' | 'outdocs' | 'events' | 'shipment' | 'photos' | 'json'
+
+const PAGE_HELP_KEY = 'order-detail'
+
+const TAB_HELP_TITLES: Record<Tab, string> = {
+  goods: 'Состав заказа',
+  outdocs: 'Исходящие документы',
+  events: 'События на складе',
+  shipment: 'Отправление',
+  photos: 'Фото',
+  json: 'JSON',
+}
 
 function highlightJson(json: string): string {
   return json.replace(
@@ -48,6 +62,20 @@ export default function OrderDetailPage() {
     sessionStorage.setItem(tabKey, t)
     setTab(t)
   }
+
+  const writerMode = usePageHelpWriterMode()
+  const pageHelp = getPageHelp(PAGE_HELP_KEY)
+  const [pageHelpOpen, setPageHelpOpen] = useState(false)
+  const tabHelp = getTabHelp(PAGE_HELP_KEY, tab)
+  const [tabHelpOpen, setTabHelpOpen] = useState(false)
+
+  useEffect(() => {
+    if (writerMode) setPageHelpOpen(true)
+  }, [writerMode])
+
+  useEffect(() => {
+    if (writerMode) setTabHelpOpen(true)
+  }, [tab, writerMode])
 
   const { data: jsonData, isLoading: jsonLoading } = useQuery({
     queryKey: ['order-json', orderId],
@@ -106,7 +134,15 @@ export default function OrderDetailPage() {
   return (
     <>
       <PageHeader
-        title={<>{`Заказ ${order.order_id ?? orderId}`}{order.state && <OrderStateBadge state={order.state} />}</>}
+        title={
+          <>
+            {(writerMode || pageHelp) && (
+              <HelpIconButton onClick={() => setPageHelpOpen((v) => !v)} size="lg" title="Пояснение к карточке заказа" />
+            )}
+            {`Заказ ${order.order_id ?? orderId}`}
+            {order.state && <OrderStateBadge state={order.state} />}
+          </>
+        }
         subtitle={<PropList items={propItems} className="text-sm text-gray-500" />}
         actions={
           <div className="flex gap-2">
@@ -121,21 +157,57 @@ export default function OrderDetailPage() {
         }
       />
 
-      <div className="flex gap-1 mb-4 border-b border-gray-200">
-        {tabs.map(({ key, label }) => (
-          <button
-            key={key}
-            onClick={() => handleSetTab(key)}
-            className={`px-4 py-2 text-sm font-medium whitespace-nowrap border-b-2 transition-colors ${
-              tab === key
-                ? 'border-primary-600 text-primary-600'
-                : 'border-transparent text-gray-500 hover:text-gray-700'
-            }`}
-          >
-            {label}
-          </button>
-        ))}
+      {(writerMode || pageHelp) && (
+        <InlineHelpPanel
+          content={pageHelp?.content ?? ''}
+          marker={`page:${PAGE_HELP_KEY}`}
+          markerTemplate={`## Карточка заказа {#page:${PAGE_HELP_KEY}}`}
+          isOpen={pageHelpOpen}
+          onClose={() => setPageHelpOpen(false)}
+          isAuthoringMode={writerMode}
+          className="-mt-4 mb-4"
+        />
+      )}
+
+      <div className="flex gap-1 mb-4 border-b border-gray-200 overflow-x-auto">
+        {tabs.map(({ key, label }) => {
+          const isActive = tab === key
+          const helpForTab = getTabHelp(PAGE_HELP_KEY, key)
+          return (
+            <button
+              key={key}
+              type="button"
+              onClick={() => handleSetTab(key)}
+              className={`inline-flex items-center gap-0.5 px-4 py-2 text-sm font-medium whitespace-nowrap border-b-2 transition-colors ${
+                isActive
+                  ? 'border-primary-600 text-primary-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700'
+              }`}
+            >
+              {isActive && (writerMode || helpForTab) && (
+                <HelpIconButton
+                  asSpan
+                  onClick={() => setTabHelpOpen((v) => !v)}
+                  title={`Пояснение: ${label}`}
+                />
+              )}
+              {label}
+            </button>
+          )
+        })}
       </div>
+
+      {(writerMode || tabHelp) && (
+        <InlineHelpPanel
+          content={tabHelp?.content ?? ''}
+          marker={`tab:${PAGE_HELP_KEY}:${tab}`}
+          markerTemplate={`### ${TAB_HELP_TITLES[tab]} {#tab:${PAGE_HELP_KEY}:${tab}}`}
+          isOpen={tabHelpOpen}
+          onClose={() => setTabHelpOpen(false)}
+          isAuthoringMode={writerMode}
+          className="mb-4"
+        />
+      )}
 
       {tab === 'goods' && (
         <div className="card overflow-hidden">

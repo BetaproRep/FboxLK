@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { resetAccountCache } from '@/lib/queryClient'
 
 const STORAGE_KEY = 'fbox_auth'
 
@@ -25,14 +26,20 @@ function notify() {
 }
 
 export function setCredentials(partnerId: string, password: string) {
+  const changed =
+    _state?.partnerId !== partnerId || _state?.password !== password
   _state = { partnerId, password }
   localStorage.setItem(STORAGE_KEY, JSON.stringify(_state))
+  if (changed) {
+    resetAccountCache()
+  }
   notify()
 }
 
 export function clearCredentials() {
   _state = null
   localStorage.removeItem(STORAGE_KEY)
+  resetAccountCache()
   notify()
 }
 

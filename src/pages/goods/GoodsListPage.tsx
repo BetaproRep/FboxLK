@@ -6,6 +6,9 @@ import { useQuery } from '@tanstack/react-query'
 import { goodsApi } from '@/api/goods'
 import type { GoodListItem } from '@/types/good'
 import PageHeader from '@/components/ui/PageHeader'
+import InlineHelpPanel, { HelpIconButton } from '@/components/ui/InlineHelpPanel'
+import { getPageHelp } from '@/content/pageHelp'
+import { usePageHelpWriterMode } from '@/content/authoringState'
 import EmptyState from '@/components/ui/EmptyState'
 import Spinner from '@/components/ui/Spinner'
 import { dict } from '@/constants/dict'
@@ -40,6 +43,13 @@ function parseClipboard(text: string): ClipboardRow[] {
 
 export default function GoodsListPage() {
   const navigate = useNavigate()
+  const writerMode = usePageHelpWriterMode()
+  const pageHelp = getPageHelp('goods')
+  const [pageHelpOpen, setPageHelpOpen] = useState(false)
+
+  useEffect(() => {
+    if (writerMode) setPageHelpOpen(true)
+  }, [writerMode])
 
   const [goodNameLike, setGoodNameLike] = useState(
     () => sessionStorage.getItem('goods_good_name_like') ?? '',
@@ -238,13 +248,30 @@ export default function GoodsListPage() {
   return (
     <>
       <PageHeader
-        title="Товары"
+        title={
+          <>
+            {(writerMode || pageHelp) && <HelpIconButton onClick={() => setPageHelpOpen((v) => !v)} size="lg" />}
+            <span>Товары</span>
+          </>
+        }
         actions={
           <button className="btn-primary" onClick={() => setShowUpload(true)}>
             Загрузить номенклатуру
           </button>
         }
       />
+
+      {(writerMode || pageHelp) && (
+        <InlineHelpPanel
+          content={pageHelp?.content ?? ''}
+          marker="page:goods"
+          markerTemplate="## Товары {#page:goods}"
+          isOpen={pageHelpOpen}
+          onClose={() => setPageHelpOpen(false)}
+          isAuthoringMode={writerMode}
+          className="-mt-4 mb-4"
+        />
+      )}
 
       <div className="card p-4 mb-6 flex flex-wrap items-center gap-4">
         {/* Clipboard: badge или кнопка */}

@@ -10,10 +10,16 @@ import { apiClient } from './client'
 
 export type PeriodKey =
   | 'today'
+  | 'yesterday'
   | 'this_week'
   | 'prev_week'
   | 'this_month'
   | 'prev_month'
+
+export interface DashboardTimeSeriesPoint {
+  date: string
+  value: number
+}
 
 export interface DocsItems {
   docs: number
@@ -23,19 +29,16 @@ export interface DocsItems {
 export interface DashboardOrdersCard {
   waiting: number
   inwork: number
-  shipped_today: number
 }
 
 export interface DashboardGoodsSupplyCard {
   waiting: DocsItems
   inwork: DocsItems
-  accepted_today: DocsItems
 }
 
 export interface DashboardGoodsShipmentCard {
   waiting: DocsItems
   inwork: DocsItems
-  shipped_today: DocsItems
 }
 
 export interface DashboardReport {
@@ -48,6 +51,7 @@ export interface DashboardTableRow {
   key: string
   label: string
   values: Partial<Record<PeriodKey, number>>
+  time_series?: DashboardTimeSeriesPoint[]
 }
 
 export interface DashboardTable {

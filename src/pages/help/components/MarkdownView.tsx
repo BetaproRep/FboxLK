@@ -1,7 +1,13 @@
+import { Link } from 'react-router-dom'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import remarkAttrs from 'remark-attrs'
 import rehypeSlug from 'rehype-slug'
+
+/** Пути вида `/help?…` в markdown — внутренние; с `<a href>` браузер уходит на корень домена, минуя `basename` (`/accounts`). */
+function isInternalAppPath(href: string | undefined): href is string {
+  return typeof href === 'string' && href.startsWith('/') && !href.startsWith('//')
+}
 
 interface Props {
   source: string
@@ -31,7 +37,18 @@ export default function MarkdownView({ source, className = '' }: Props) {
           ol: (props) => <ol className="list-decimal pl-6 space-y-1 text-sm text-gray-700 mb-3" {...props} />,
           li: (props) => <li className="leading-6" {...props} />,
           code: (props) => <code className="px-1 py-0.5 rounded bg-gray-100 text-[0.85em] font-mono text-gray-800" {...props} />,
-          a: (props) => <a className="text-primary-700 hover:underline" {...props} />,
+          a: ({ href, children, title }) => {
+            const cn = 'text-primary-700 hover:underline'
+            return isInternalAppPath(href) ? (
+              <Link to={href} className={cn} title={title}>
+                {children}
+              </Link>
+            ) : (
+              <a className={cn} href={href} title={title}>
+                {children}
+              </a>
+            )
+          },
           blockquote: (props) => (
             <blockquote className="border-l-4 border-primary-200 pl-4 italic text-gray-600 my-3" {...props} />
           ),

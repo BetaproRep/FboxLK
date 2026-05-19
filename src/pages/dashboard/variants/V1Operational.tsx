@@ -1,8 +1,12 @@
-import { useState, type ReactNode } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import Spinner from '@/components/ui/Spinner'
 import { useDashboardData } from '../hooks/useDashboardData'
 import PeriodTable from '../components/PeriodTable'
+import TableTimeSeriesChart from '../components/TableTimeSeriesChart'
 import { fmt } from '../utils/fmt'
+import InlineHelpPanel, { HelpIconButton } from '@/components/ui/InlineHelpPanel'
+import { getTabHelp } from '@/content/pageHelp'
+import { usePageHelpWriterMode } from '@/content/authoringState'
 import type {
   DashboardOrdersCard,
   DashboardGoodsSupplyCard,
@@ -44,10 +48,6 @@ function OrdersCard({ data }: { data: DashboardOrdersCard }) {
         <div className="flex items-center justify-between">
           <span className="text-sky-900/90">В работе</span>
           <NumCell value={data.inwork} tone="text-sky-900" />
-        </div>
-        <div className="flex items-center justify-between">
-          <span className="text-sky-900/90">Отгружено сегодня</span>
-          <NumCell value={data.shipped_today} tone="text-sky-900" />
         </div>
       </div>
     </div>
@@ -118,7 +118,6 @@ function GoodsSupplyCard({ data }: { data: DashboardGoodsSupplyCard }) {
       rows={[
         { label: 'В ожидании',     value: data.waiting },
         { label: 'В работе',       value: data.inwork },
-        { label: 'Принято сегодня', value: data.accepted_today },
       ]}
     />
   )
@@ -135,7 +134,6 @@ function GoodsShipmentCard({ data }: { data: DashboardGoodsShipmentCard }) {
       rows={[
         { label: 'В ожидании',       value: data.waiting },
         { label: 'В работе',         value: data.inwork },
-        { label: 'Отгружено сегодня', value: data.shipped_today },
       ]}
     />
   )
@@ -193,7 +191,7 @@ function ReportDownloadButton({ report }: { report: DashboardReport }) {
 function ReportsCard({ reports }: { reports: DashboardReport[] }) {
   return (
     <div className="rounded-lg border border-violet-200 bg-violet-50 px-4 py-3 text-sm shadow-sm">
-      <div className="font-semibold text-violet-900 mb-2">Аналитические отчеты</div>
+      <div className="font-semibold text-violet-900 mb-2">Скачать отчеты в Excel</div>
       <div className="space-y-1.5">
         {reports.map((r) => (
           <ReportDownloadButton key={r.url} report={r} />
@@ -204,7 +202,13 @@ function ReportsCard({ reports }: { reports: DashboardReport[] }) {
 }
 
 export default function V1Operational() {
+  const writerMode = usePageHelpWriterMode()
+  const tabHelp = getTabHelp('dashboard', 'v1')
+  const [tabHelpOpen, setTabHelpOpen] = useState(false)
   const { data, isLoading, error } = useDashboardData()
+  useEffect(() => {
+    if (writerMode) setTabHelpOpen(true)
+  }, [writerMode])
 
   if (isLoading || !data) {
     return (
@@ -233,23 +237,37 @@ export default function V1Operational() {
 
   const tables: ReactNode[] = []
   if (isPresent(data.tables?.orders)) {
+    const hasOrdersSeries = data.tables!.orders!.rows.some((row) => (row.time_series?.length ?? 0) > 0)
     tables.push(
-      <PeriodTable
-        key="orders-table"
-        title="Заказы"
-        rows={data.tables!.orders!.rows}
-        unitsHint="штук заказов"
-      />,
+      <div key="orders-table" className="space-y-0">
+        <PeriodTable
+          title="Заказы"
+          rows={data.tables!.orders!.rows}
+          unitsHint="штук заказов"
+          mergeWithNext={hasOrdersSeries}
+        />
+        <TableTimeSeriesChart
+          rows={data.tables!.orders!.rows}
+          mergeWithPrevious={hasOrdersSeries}
+        />
+      </div>,
     )
   }
   if (isPresent(data.tables?.goods)) {
+    const hasGoodsSeries = data.tables!.goods!.rows.some((row) => (row.time_series?.length ?? 0) > 0)
     tables.push(
-      <PeriodTable
-        key="goods-table"
-        title="Товары"
-        rows={data.tables!.goods!.rows}
-        unitsHint="единиц товара"
-      />,
+      <div key="goods-table" className="space-y-0">
+        <PeriodTable
+          title="Товары"
+          rows={data.tables!.goods!.rows}
+          unitsHint="единиц товара"
+          mergeWithNext={hasGoodsSeries}
+        />
+        <TableTimeSeriesChart
+          rows={data.tables!.goods!.rows}
+          mergeWithPrevious={hasGoodsSeries}
+        />
+      </div>,
     )
   }
 
@@ -258,11 +276,26 @@ export default function V1Operational() {
 
   return (
     <div className="space-y-6">
+      {(writerMode || tabHelp) && (
+        <div className="flex justify-end">
+          <HelpIconButton onClick={() => setTabHelpOpen((v) => !v)} title="Пояснение к текущему виду дашборда" />
+        </div>
+      )}
+      {(writerMode || tabHelp) && (
+        <InlineHelpPanel
+          content={tabHelp?.content ?? ''}
+          marker="tab:dashboard:v1"
+          markerTemplate="### Операционный вид {#tab:dashboard:v1}"
+          isOpen={tabHelpOpen}
+          onClose={() => setTabHelpOpen(false)}
+          isAuthoringMode={writerMode}
+        />
+      )}
       {cards.length > 0 && (
         <div className={`grid ${cardsGridCols} gap-3`}>{cards}</div>
       )}
       {tables.length > 0 && (
-        <div className={`grid ${tablesGridCols} gap-6`}>{tables}</div>
+        <div className={`grid ${tablesGridCols} gap-3`}>{tables}</div>
       )}
     </div>
   )

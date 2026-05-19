@@ -1,5 +1,6 @@
 import defaultHelpMarkdown from '@/content/help/help.md?raw'
 import { parseTabbedMarkdown } from '@/content/markdownContracts'
+import { getMarkdownWithOverride, HELP_OVERRIDE_STORAGE_KEY } from '@/content/authoringState'
 
 export interface HelpSection {
   /** id-якорь, по которому секция открывается. */
@@ -10,10 +11,9 @@ export interface HelpSection {
   content: string
 }
 
-export const HELP_OVERRIDE_STORAGE_KEY = 'help_markdown_override_v1'
 export const helpMarkdownDefault = defaultHelpMarkdown
 
-const parsedDefault = parseTabbedMarkdown(helpMarkdownDefault)
+const parsedDefault = parseTabbedMarkdown(getMarkdownWithOverride(helpMarkdownDefault, HELP_OVERRIDE_STORAGE_KEY))
 if (parsedDefault.issues.length > 0) {
   // Встроенный markdown должен быть валиден; ошибки выводим в консоль для диагностики.
   console.error('[help] invalid default markdown contract', parsedDefault.issues)

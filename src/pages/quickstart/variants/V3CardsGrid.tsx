@@ -1,217 +1,182 @@
-import { useEffect, useMemo, useRef, useState, type ChangeEventHandler } from 'react'
-import { Link, useSearchParams } from 'react-router-dom'
+import { useEffect, useMemo, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import {
   parseQuickStartSteps,
   quickStartMarkdownDefault,
-  quickStartSteps,
-  QUICKSTART_OVERRIDE_STORAGE_KEY,
+  quickStartScenarios,
 } from '../content'
-import ConceptChip from '../components/ConceptChip'
+import QuickStartMarkdownView from '../components/QuickStartMarkdownView'
+import InlineHelpPanel, { HelpIconButton } from '@/components/ui/InlineHelpPanel'
+import { getTabHelp } from '@/content/pageHelp'
+import {
+  getMarkdownWithOverride,
+  QUICKSTART_OVERRIDE_STORAGE_KEY,
+  usePageHelpWriterMode,
+} from '@/content/authoringState'
+import type { QuickStartCard, QuickStartScenario } from '@/content/markdownContracts'
 
-const STORAGE_KEY = 'quickstart_v3_open_step'
+const qsIcon = (path: string) => (
+  <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.7} d={path} />
+  </svg>
+)
 
-const stepIcons: Record<string, React.ReactNode> = {
-  goods: (
-    <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.7}
-        d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
-    </svg>
+const quickStartCardIcons: Record<string, React.ReactNode> = {
+  goods: qsIcon(
+    'M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4',
   ),
-  supply: (
-    <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.7}
-        d="M3 10l1.5 9a2 2 0 002 1.66h11a2 2 0 002-1.66L21 10M3 10l9-7 9 7M3 10h18" />
-    </svg>
+  supply: qsIcon('M3 10l1.5 9a2 2 0 002 1.66h11a2 2 0 002-1.66L21 10M3 10l9-7 9 7M3 10h18'),
+  'tracking-supply': qsIcon(
+    'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 12l2 2 4-4',
   ),
-  'tracking-supply': (
-    <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.7}
-        d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 12l2 2 4-4" />
-    </svg>
-  ),
-  orders: (
-    <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.7}
-        d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
-    </svg>
-  ),
-  'tracking-orders': (
-    <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.7}
-        d="M9 19V6l-2 2m4-2v13m0 0l3-3m-3 3l-3-3m11-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-    </svg>
+  orders: qsIcon('M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z'),
+  'tracking-orders': qsIcon(
+    'M9 19V6l-2 2m4-2v13m0 0l3-3m-3 3l-3-3m11-3a9 9 0 11-18 0 9 9 0 0118 0z',
   ),
 }
 
+/** Иконка только при явном `icon=` в md и известном ключе реестра */
+function resolvedCardIcon(card: QuickStartCard): React.ReactNode | null {
+  if (!card.iconKey) return null
+  return quickStartCardIcons[card.iconKey] ?? null
+}
+
+function CardBadgeRow({ card, className }: { card: QuickStartCard; className: string }) {
+  const icon = resolvedCardIcon(card)
+  const showStep = card.step !== undefined
+  const stepText = showStep ? `Шаг ${card.step}` : null
+  if (!icon && !stepText) return null
+  return (
+    <div
+      className={`flex items-start gap-2 ${className} ${
+        icon && stepText ? 'justify-between' : stepText ? 'justify-end' : ''
+      }`}
+    >
+      {icon && (
+        <div className="w-12 h-12 rounded-lg bg-primary-50 text-primary-600 flex items-center justify-center shrink-0 group-hover:bg-primary-100 transition-colors">
+          {icon}
+        </div>
+      )}
+      {stepText && (
+        <span className="text-xs font-semibold uppercase tracking-wider text-gray-400 shrink-0">{stepText}</span>
+      )}
+    </div>
+  )
+}
+
 export default function V3CardsGrid() {
-  const [searchParams] = useSearchParams()
-  const isAuthoringMode = searchParams.get('authoring') === '1'
-  const fileInputRef = useRef<HTMLInputElement | null>(null)
-  const [markdown, setMarkdown] = useState<string>(() => {
-    const fromStorage = sessionStorage.getItem(QUICKSTART_OVERRIDE_STORAGE_KEY)
-    return fromStorage ?? quickStartMarkdownDefault
-  })
-  const [validationErrors, setValidationErrors] = useState<string[]>([])
-  const [infoMessage, setInfoMessage] = useState<string>('')
-  const parsed = useMemo(() => parseQuickStartSteps(markdown), [markdown])
-  const steps = parsed.steps.length > 0 ? parsed.steps : quickStartSteps
+  const writerMode = usePageHelpWriterMode()
+  const [searchParams, setSearchParams] = useSearchParams()
+  const markdownSource = getMarkdownWithOverride(quickStartMarkdownDefault, QUICKSTART_OVERRIDE_STORAGE_KEY)
+  const parsed = useMemo(() => parseQuickStartSteps(markdownSource), [markdownSource])
+  const scenarios: QuickStartScenario[] =
+    parsed.scenarios.length > 0 ? parsed.scenarios : quickStartScenarios
 
-  const [openId, setOpenId] = useState<string | null>(() => {
-    const saved = sessionStorage.getItem(STORAGE_KEY)
-    if (!saved) return null
-    return saved
-  })
+  const tabFromUrl = searchParams.get('tab')
+  const cardFromUrl = searchParams.get('card')
+
+  const scenarioForCard =
+    cardFromUrl && scenarios.length > 0
+      ? scenarios.find((s) => s.cards.some((c) => c.id === cardFromUrl)) ?? null
+      : null
+
+  const activeScenario =
+    scenarioForCard ??
+    scenarios.find((s) => s.id === tabFromUrl) ??
+    scenarios[0] ??
+    null
+
+  const [tabHelpOpen, setTabHelpOpen] = useState(false)
+
+  const openLongCard =
+    activeScenario?.cards.find((c) => c.id === cardFromUrl && c.cardType === 'long') ?? null
 
   useEffect(() => {
-    if (!openId) {
-      sessionStorage.removeItem(STORAGE_KEY)
-      return
+    if (!activeScenario || scenarios.length === 0) return
+    const next = new URLSearchParams(searchParams)
+    let changed = false
+    if (tabFromUrl !== activeScenario.id) {
+      next.set('tab', activeScenario.id)
+      changed = true
     }
-    sessionStorage.setItem(STORAGE_KEY, openId)
-  }, [openId])
+    if (changed) setSearchParams(next, { replace: true })
+  }, [activeScenario, scenarios.length, searchParams, setSearchParams, tabFromUrl])
 
   useEffect(() => {
-    if (openId && !steps.some((step) => step.id === openId)) {
-      setOpenId(null)
+    if (!cardFromUrl || !activeScenario) return
+    const c = activeScenario.cards.find((x) => x.id === cardFromUrl)
+    if (!c || c.cardType !== 'long') {
+      const next = new URLSearchParams(searchParams)
+      next.delete('card')
+      setSearchParams(next, { replace: true })
     }
-  }, [openId, steps])
+  }, [activeScenario, cardFromUrl, searchParams, setSearchParams])
 
-  const open = steps.find((s) => s.id === openId)
-  const defaultErrors = parsed.issues.map((issue) => `Строка ${issue.line}: ${issue.message}`)
+  const tabHelp = getTabHelp('quick-start', openLongCard?.id)
+  useEffect(() => {
+    setTabHelpOpen(writerMode)
+  }, [openLongCard?.id, writerMode])
 
-  const handleReset = () => {
-    sessionStorage.removeItem(QUICKSTART_OVERRIDE_STORAGE_KEY)
-    setMarkdown(quickStartMarkdownDefault)
-    setValidationErrors([])
-    setInfoMessage('Вернули встроенную версию быстрого старта.')
+  const setScenarioTab = (id: string) => {
+    const next = new URLSearchParams(searchParams)
+    next.set('tab', id)
+    next.delete('card')
+    setSearchParams(next)
   }
 
-  const handleExport = () => {
-    const blob = new Blob([markdown], { type: 'text/markdown;charset=utf-8' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = 'quickstart.md'
-    a.click()
-    URL.revokeObjectURL(url)
-    setInfoMessage('Markdown выгружен в файл.')
+  const openCardDetail = (id: string) => {
+    const next = new URLSearchParams(searchParams)
+    next.set('card', id)
+    setSearchParams(next)
   }
 
-  const handleImportClick = () => fileInputRef.current?.click()
-
-  const handleImportFile: ChangeEventHandler<HTMLInputElement> = async (event) => {
-    const file = event.target.files?.[0]
-    event.currentTarget.value = ''
-    if (!file) return
-
-    const nextMarkdown = await file.text()
-    const nextParsed = parseQuickStartSteps(nextMarkdown)
-    const issues = nextParsed.issues.map((issue) => `Строка ${issue.line}: ${issue.message}`)
-
-    if (issues.length > 0) {
-      setValidationErrors(issues)
-      setInfoMessage('Импорт отклонён: исправьте ошибки контракта markdown.')
-      return
-    }
-
-    sessionStorage.setItem(QUICKSTART_OVERRIDE_STORAGE_KEY, nextMarkdown)
-    setMarkdown(nextMarkdown)
-    setValidationErrors([])
-    setInfoMessage('Новая версия markdown успешно применена в текущей сессии.')
+  const closeCardDetail = () => {
+    const next = new URLSearchParams(searchParams)
+    next.delete('card')
+    setSearchParams(next)
   }
 
-  if (open) {
+  if (!activeScenario) {
+    return <p className="text-sm text-gray-600">Нет сценариев в quickstart.md.</p>
+  }
+
+  if (openLongCard) {
     return (
       <div className="max-w-3xl">
-        {isAuthoringMode && <div className="mb-4 rounded-lg border border-gray-200 bg-white p-4">
-          <div className="flex flex-wrap items-center gap-2">
-            <button
-              type="button"
-              onClick={handleExport}
-              className="px-3 py-1.5 text-sm rounded-md border border-gray-300 text-gray-700 hover:bg-gray-50"
-            >
-              Экспорт md
-            </button>
-            <button
-              type="button"
-              onClick={handleImportClick}
-              className="px-3 py-1.5 text-sm rounded-md border border-gray-300 text-gray-700 hover:bg-gray-50"
-            >
-              Импорт md
-            </button>
-            <button
-              type="button"
-              onClick={handleReset}
-              className="px-3 py-1.5 text-sm rounded-md border border-gray-300 text-gray-700 hover:bg-gray-50"
-            >
-              Сбросить к дефолту
-            </button>
-            <input ref={fileInputRef} type="file" accept=".md,text/markdown,text/plain" onChange={handleImportFile} className="hidden" />
-          </div>
-          {infoMessage && <p className="mt-2 text-xs text-gray-600">{infoMessage}</p>}
-          {defaultErrors.length > 0 && (
-            <div className="mt-3 rounded-md border border-amber-300 bg-amber-50 p-3">
-              <p className="text-xs font-medium text-amber-900">Встроенный markdown содержит ошибки контракта:</p>
-              <ul className="mt-1 list-disc pl-5 text-xs text-amber-800">
-                {defaultErrors.map((error) => <li key={error}>{error}</li>)}
-              </ul>
-            </div>
+        <div className="mb-4 flex items-center justify-between">
+          <button
+            type="button"
+            onClick={closeCardDetail}
+            className="inline-flex items-center gap-1.5 text-sm text-gray-600 hover:text-gray-900"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+            </svg>
+            К карте шагов
+          </button>
+          {(writerMode || tabHelp) && (
+            <HelpIconButton
+              onClick={() => setTabHelpOpen((v) => !v)}
+              title={`Пояснение: ${openLongCard.title}`}
+            />
           )}
-          {validationErrors.length > 0 && (
-            <div className="mt-3 rounded-md border border-red-300 bg-red-50 p-3">
-              <p className="text-xs font-medium text-red-900">Ошибки в импортированном markdown:</p>
-              <ul className="mt-1 list-disc pl-5 text-xs text-red-800">
-                {validationErrors.map((error) => <li key={error}>{error}</li>)}
-              </ul>
-            </div>
-          )}
-        </div>}
+        </div>
 
-        <button
-          type="button"
-          onClick={() => setOpenId(null)}
-          className="mb-4 inline-flex items-center gap-1.5 text-sm text-gray-600 hover:text-gray-900"
-        >
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-          </svg>
-          К карте шагов
-        </button>
+        {(writerMode || tabHelp) && (
+          <InlineHelpPanel
+            content={tabHelp?.content ?? ''}
+            marker={`tab:quick-start:${openLongCard.id}`}
+            markerTemplate={`### Шаг: ${openLongCard.title} {#tab:quick-start:${openLongCard.id}}`}
+            isOpen={tabHelpOpen}
+            onClose={() => setTabHelpOpen(false)}
+            isAuthoringMode={writerMode}
+            className="mb-4"
+          />
+        )}
 
         <div className="bg-white rounded-lg border border-gray-200 p-8">
-          <h2 className="text-2xl font-bold text-gray-900 mb-3">{open.title}</h2>
-          <p className="text-base text-gray-700 leading-7 mb-4">{open.intro}</p>
-
-          <ul className="list-disc pl-5 space-y-2 text-sm text-gray-700 mb-6">
-            {open.body.map((line, i) => (
-              <li key={i} className="leading-6">{line}</li>
-            ))}
-          </ul>
-
-          {open.concepts.length > 0 && (
-            <div className="mb-6">
-              <div className="text-xs font-semibold uppercase tracking-wider text-gray-500 mb-2">
-                Важные понятия
-              </div>
-              <div className="flex flex-wrap gap-1.5">
-                {open.concepts.map((c) => (
-                  <ConceptChip key={`${c.label}:${c.to}`} concept={c} />
-                ))}
-              </div>
-            </div>
-          )}
-
-          {open.cta && (
-            <Link
-              to={open.cta.to}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-primary-600 text-white text-sm font-medium hover:bg-primary-700 transition-colors"
-            >
-              {open.cta.label}
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
-              </svg>
-            </Link>
-          )}
+          <h2 className="text-2xl font-bold text-gray-900 mb-4">{openLongCard.title}</h2>
+          <QuickStartMarkdownView source={openLongCard.bodyMarkdown} />
         </div>
       </div>
     )
@@ -219,76 +184,77 @@ export default function V3CardsGrid() {
 
   return (
     <div>
-      {isAuthoringMode && <div className="mb-4 rounded-lg border border-gray-200 bg-white p-4">
-        <div className="flex flex-wrap items-center gap-2">
-          <button
-            type="button"
-            onClick={handleExport}
-            className="px-3 py-1.5 text-sm rounded-md border border-gray-300 text-gray-700 hover:bg-gray-50"
-          >
-            Экспорт md
-          </button>
-          <button
-            type="button"
-            onClick={handleImportClick}
-            className="px-3 py-1.5 text-sm rounded-md border border-gray-300 text-gray-700 hover:bg-gray-50"
-          >
-            Импорт md
-          </button>
-          <button
-            type="button"
-            onClick={handleReset}
-            className="px-3 py-1.5 text-sm rounded-md border border-gray-300 text-gray-700 hover:bg-gray-50"
-          >
-            Сбросить к дефолту
-          </button>
-          <input ref={fileInputRef} type="file" accept=".md,text/markdown,text/plain" onChange={handleImportFile} className="hidden" />
+      {scenarios.length > 1 && (
+        <div className="mb-6 border-b border-gray-200">
+          <nav className="-mb-px flex flex-wrap gap-2" aria-label="Сценарии">
+            {scenarios.map((s) => {
+              const active = s.id === activeScenario.id
+              return (
+                <button
+                  key={s.id}
+                  type="button"
+                  onClick={() => setScenarioTab(s.id)}
+                  className={`whitespace-nowrap border-b-2 px-3 py-2 text-sm font-medium transition-colors ${
+                    active
+                      ? 'border-primary-600 text-primary-700'
+                      : 'border-transparent text-gray-600 hover:border-gray-300 hover:text-gray-900'
+                  }`}
+                >
+                  {s.title}
+                </button>
+              )
+            })}
+          </nav>
         </div>
-        {infoMessage && <p className="mt-2 text-xs text-gray-600">{infoMessage}</p>}
-        {defaultErrors.length > 0 && (
-          <div className="mt-3 rounded-md border border-amber-300 bg-amber-50 p-3">
-            <p className="text-xs font-medium text-amber-900">Встроенный markdown содержит ошибки контракта:</p>
-            <ul className="mt-1 list-disc pl-5 text-xs text-amber-800">
-              {defaultErrors.map((error) => <li key={error}>{error}</li>)}
-            </ul>
-          </div>
-        )}
-        {validationErrors.length > 0 && (
-          <div className="mt-3 rounded-md border border-red-300 bg-red-50 p-3">
-            <p className="text-xs font-medium text-red-900">Ошибки в импортированном markdown:</p>
-            <ul className="mt-1 list-disc pl-5 text-xs text-red-800">
-              {validationErrors.map((error) => <li key={error}>{error}</li>)}
-            </ul>
-          </div>
-        )}
-      </div>}
+      )}
+
+      {activeScenario.preambleMarkdown.trim() !== '' && (
+        <div className="mb-6 rounded-lg border border-gray-100 bg-gray-50/80 p-4">
+          <QuickStartMarkdownView source={activeScenario.preambleMarkdown} />
+        </div>
+      )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {steps.map((step, idx) => (
-          <button
-            key={step.id}
-            type="button"
-            onClick={() => setOpenId(step.id)}
-            className="group bg-white rounded-lg border border-gray-200 p-6 text-left hover:border-primary-300 hover:shadow-sm transition-all"
-          >
-            <div className="flex items-start justify-between mb-4">
-              <div className="w-12 h-12 rounded-lg bg-primary-50 text-primary-600 flex items-center justify-center group-hover:bg-primary-100 transition-colors">
-                {stepIcons[step.id] ?? <span>{idx + 1}</span>}
+        {activeScenario.cards.map((card) => {
+          if (card.cardType === 'short') {
+            return (
+              <div
+                key={card.id}
+                className="group bg-white rounded-lg border border-gray-200 p-6 text-left flex flex-col"
+              >
+                <CardBadgeRow card={card} className="mb-3" />
+                <h3 className="text-base font-semibold text-gray-900 mb-2 leading-snug">{card.title}</h3>
+                <div className="text-sm text-gray-700 flex-1 min-h-0">
+                  <QuickStartMarkdownView source={card.bodyMarkdown} />
+                </div>
               </div>
-              <span className="text-xs font-semibold uppercase tracking-wider text-gray-400">
-                Шаг {idx + 1}
-              </span>
-            </div>
-            <h3 className="text-base font-semibold text-gray-900 mb-2 leading-snug">{step.title}</h3>
-            <p className="text-sm text-gray-600 leading-6">{step.intro}</p>
-            <div className="mt-4 inline-flex items-center gap-1 text-sm font-medium text-primary-700">
-              Подробнее
-              <svg className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
-              </svg>
-            </div>
-          </button>
-        ))}
+            )
+          }
+
+          return (
+            <button
+              key={card.id}
+              type="button"
+              onClick={() => openCardDetail(card.id)}
+              className="group bg-white rounded-lg border border-gray-200 p-6 text-left hover:border-primary-300 hover:shadow-sm transition-all flex flex-col"
+            >
+              <CardBadgeRow card={card} className="mb-4" />
+              <h3 className="text-base font-semibold text-gray-900 mb-2 leading-snug">{card.title}</h3>
+              <p className="text-sm text-gray-600 leading-6 line-clamp-6">{card.teaserText}</p>
+              <div className="mt-auto pt-4 inline-flex items-center gap-1 text-sm font-medium text-primary-700">
+                Подробнее
+                <svg
+                  className="w-4 h-4 group-hover:translate-x-0.5 transition-transform"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                </svg>
+              </div>
+            </button>
+          )
+        })}
       </div>
     </div>
   )

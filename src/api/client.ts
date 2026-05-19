@@ -1,6 +1,7 @@
 import axios from 'axios'
 import toast from 'react-hot-toast'
 import { getBasicAuth, clearCredentials } from '@/store/auth'
+import { appPath } from '@/utils/appPath'
 
 const runtimeBaseUrl = window.__APP_CONFIG__?.API_BASE_URL?.trim()
 const buildTimeBaseUrl = import.meta.env.VITE_API_BASE_URL?.trim()
@@ -51,7 +52,10 @@ apiClient.interceptors.response.use(
 
     if (status === 401 || status === 403) {
       clearCredentials()
-      window.location.href = '/login'
+      const skipAuthRedirect = (error.config as Record<string, unknown> | undefined)?.skipAuthRedirect
+      if (!skipAuthRedirect) {
+        window.location.href = appPath('login')
+      }
       return Promise.reject(error)
     }
 

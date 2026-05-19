@@ -97,6 +97,7 @@ export interface ConceptRef {
   to: string
 }
 
+/** @deprecated Используйте QuickStartCard / QuickStartScenario; оставлено для совместимости типов в старых импортах */
 export interface QuickStartStep {
   id: string
   title: string
@@ -106,93 +107,232 @@ export interface QuickStartStep {
   cta?: { label: string; to: string }
 }
 
+export type QuickStartCardType = 'long' | 'short'
+
+export interface QuickStartCard {
+  id: string
+  title: string
+  cardType: QuickStartCardType
+  /** Номер шага из атрибута step=N; если атрибута нет — бейдж «Шаг» не показывается */
+  step?: number
+  /** Ключ реестра иконок из атрибута icon=...; если атрибута нет — иконка не показывается */
+  iconKey?: string
+  /** Полное тело карточки (markdown под H2) */
+  bodyMarkdown: string
+  /** Для type=long: текст из начальных строк blockquote (для превью в сетке) */
+  teaserText: string
+}
+
+export interface QuickStartScenario {
+  id: string
+  title: string
+  /** Markdown до первой карточки H2 (например вводная цитата сценария) */
+  preambleMarkdown: string
+  cards: QuickStartCard[]
+}
+
 export interface QuickStartParseResult {
-  steps: QuickStartStep[]
+  scenarios: QuickStartScenario[]
   issues: MarkdownValidationIssue[]
+  /** Подзаголовок страницы: первая цитата из преамбулы первого сценария */
+  defaultPageSubtitle: string
 }
 
-function parseMarkdownLink(line: string): { label: string; href: string } | null {
-  const match = line.match(/^\s*-\s+\[(.+)\]\((.+)\)\s*$/)
-  if (!match) return null
-  return { label: match[1].trim(), href: match[2].trim() }
+const QUICKSTART_H2_CARD_RE = /^##\s+(.+?)\s+\{([^}]+)\}\s*$/
+
+function parseQuickStartBraceInner(inner: string): { id: string; attrs: Record<string, string> } | null {
+  const tokens = inner.trim().split(/\s+/).filter(Boolean)
+  if (tokens.length === 0) return null
+  const idM = tokens[0].match(/^#([a-z0-9][a-z0-9-]*)$/)
+  if (!idM) return null
+  const attrs: Record<string, string> = {}
+  for (let i = 1; i < tokens.length; i++) {
+    const t = tokens[i]
+    const eq = t.indexOf('=')
+    if (eq > 0) attrs[t.slice(0, eq)] = t.slice(eq + 1)
+  }
+  return { id: idM[1], attrs }
 }
 
-export function parseQuickStartMarkdown(markdown: string): QuickStartParseResult {
-  const parsed = parseTabbedMarkdown(markdown)
-  const issues = [...parsed.issues]
-  const steps: QuickStartStep[] = parsed.sections.map((section) => {
-    const lines = section.content.split(/\r?\n/)
-    const sectionStartLine = absLineForSection(markdown, section.id)
-    let mode: 'none' | 'steps' | 'concepts' | 'cta' = 'none'
-    const introLines: string[] = []
-    const body: string[] = []
-    const concepts: ConceptRef[] = []
-    let cta: { label: string; to: string } | undefined
-
-    lines.forEach((line) => {
-      if (/^##\s+Шаги\s*$/.test(line)) {
-        mode = 'steps'
-        return
-      }
-      if (/^##\s+Понятия\s*$/.test(line)) {
-        mode = 'concepts'
-        return
-      }
-      if (/^##\s+CTA\s*$/.test(line)) {
-        mode = 'cta'
-        return
-      }
-      if (line.startsWith('## ')) {
-        mode = 'none'
-        return
-      }
-
-      const blockquote = line.match(/^>\s*(.+)\s*$/)
-      if (blockquote) {
-        introLines.push(blockquote[1])
-        return
-      }
-
-      if (mode === 'steps') {
-        const bullet = line.match(/^\s*-\s+(.+)\s*$/)
-        if (bullet) body.push(bullet[1].trim())
-        return
-      }
-
-      if (mode === 'concepts') {
-        const link = parseMarkdownLink(line)
-        if (link) concepts.push({ label: link.label, to: link.href })
-        return
-      }
-
-      if (mode === 'cta') {
-        const link = line.match(/^\s*\[(.+)\]\((.+)\)\s*$/)
-        if (link) cta = { label: link[1].trim(), to: link[2].trim() }
-      }
-    })
-
-    if (body.length === 0) {
-      issues.push({ line: sectionStartLine, message: `Сценарий "${section.id}" не содержит блока "## Шаги".` })
+function extractLeadingBlockquoteText(markdown: string): string {
+  const lines = markdown.split(/\r?\n/)
+  const parts: string[] = []
+  for (const line of lines) {
+    if (line.trim() === '') {
+      if (parts.length > 0) break
+      continue
     }
-    if (introLines.length === 0) {
-      issues.push({ line: sectionStartLine, message: `Сценарий "${section.id}" не содержит краткого описания (blockquote "> ...").` })
-    }
-
-    return {
-      id: section.id,
-      title: section.title,
-      intro: introLines.join(' ').trim(),
-      body,
-      concepts,
-      cta,
-    }
-  })
-
-  return { steps, issues }
+    const m = line.match(/^>\s*(.*)$/)
+    if (m) parts.push(m[1].trim())
+    else break
+  }
+  return parts.join(' ').trim()
 }
 
 function absLineForSection(markdown: string, sectionId: string): number {
   const lines = markdown.split(/\r?\n/)
-  const index = lines.findIndex((line) => line.includes(`{#${sectionId}}`))
+  const index = lines.findIndex((line) => {
+    const m = line.match(H1_WITH_ID_RE)
+    return m && m[2] === sectionId
+  })
   return index >= 0 ? index + 1 : 1
+}
+
+/** 1-based номер строки в файле: первая строка тела сценария (сразу под H1) = offset 0 */
+function absLineInScenarioBody(markdown: string, scenarioId: string, lineOffsetInSection: number): number {
+  const lines = markdown.split(/\r?\n/)
+  const h1Idx = lines.findIndex((line) => {
+    const m = line.match(H1_WITH_ID_RE)
+    return m && m[2] === scenarioId
+  })
+  if (h1Idx < 0) return 1
+  return h1Idx + 1 + lineOffsetInSection + 1
+}
+
+function absLineForCard(markdown: string, cardId: string): number {
+  const lines = markdown.split(/\r?\n/)
+  for (let i = 0; i < lines.length; i++) {
+    const m = lines[i].match(QUICKSTART_H2_CARD_RE)
+    if (!m) continue
+    const inner = parseQuickStartBraceInner(m[2])
+    if (inner?.id === cardId) return i + 1
+  }
+  return 1
+}
+
+function splitScenarioIntoCards(
+  scenarioBody: string,
+  scenarioId: string,
+  markdown: string,
+  issues: MarkdownValidationIssue[],
+): { preambleMarkdown: string; cards: Omit<QuickStartCard, 'teaserText'>[] } {
+  const lines = scenarioBody.split(/\r?\n/)
+  const cardHeaderIndices: number[] = []
+  lines.forEach((line, i) => {
+    if (QUICKSTART_H2_CARD_RE.test(line)) cardHeaderIndices.push(i)
+  })
+
+  if (cardHeaderIndices.length === 0) {
+    const lineNo = absLineForSection(markdown, scenarioId)
+    issues.push({
+      line: lineNo,
+      message: `Сценарий "${scenarioId}" не содержит карточек: ожидается хотя бы один заголовок "## Название {#card-id type=long|short ...}".`,
+    })
+    return { preambleMarkdown: scenarioBody.trim(), cards: [] }
+  }
+
+  const preambleLines = lines.slice(0, cardHeaderIndices[0])
+  const preambleMarkdown = trimTrailingEmptyLines(preambleLines).join('\n').trim()
+
+  const cards: Omit<QuickStartCard, 'teaserText'>[] = []
+
+  cardHeaderIndices.forEach((headerIdx, cardIndex) => {
+    const headerLine = lines[headerIdx]
+    const hm = headerLine.match(QUICKSTART_H2_CARD_RE)
+    if (!hm) return
+    const title = hm[1].trim()
+    const parsedInner = parseQuickStartBraceInner(hm[2])
+    const lineNo = absLineInScenarioBody(markdown, scenarioId, headerIdx)
+
+    if (!parsedInner) {
+      issues.push({
+        line: lineNo,
+        message: `Некорректный заголовок карточки в сценарии "${scenarioId}": первый токен в {...} должен быть #card-id.`,
+      })
+      return
+    }
+
+    const { id, attrs } = parsedInner
+    const cardLine = absLineForCard(markdown, id)
+    const typeRaw = (attrs.type ?? 'long').toLowerCase()
+    if (typeRaw !== 'long' && typeRaw !== 'short') {
+      issues.push({
+        line: cardLine,
+        message: `Карточка "${id}": допустим только type=long или type=short, получено "${attrs.type ?? ''}".`,
+      })
+      return
+    }
+    const cardType = typeRaw as QuickStartCardType
+
+    let step: number | undefined
+    if (attrs.step !== undefined) {
+      const n = parseInt(attrs.step, 10)
+      if (Number.isNaN(n)) {
+        issues.push({ line: cardLine, message: `Карточка "${id}": step должен быть числом.` })
+      } else {
+        step = n
+      }
+    }
+
+    const iconKey = attrs.icon?.trim() || undefined
+
+    const nextHeader = cardHeaderIndices[cardIndex + 1] ?? lines.length
+    const bodyLines = lines.slice(headerIdx + 1, nextHeader)
+    const bodyMarkdown = trimTrailingEmptyLines(bodyLines).join('\n').trim()
+
+    if (!bodyMarkdown) {
+      issues.push({ line: cardLine, message: `Карточка "${id}" не содержит контента под заголовком.` })
+    }
+
+    if (cardType === 'long') {
+      const firstMeaningful = bodyLines.find((l) => l.trim() !== '')
+      if (!firstMeaningful || !/^>\s/.test(firstMeaningful)) {
+        issues.push({
+          line: cardLine,
+          message: `Карточка "${id}" (type=long): сразу после заголовка нужна хотя бы одна строка цитаты "> ...".`,
+        })
+      }
+    }
+
+    cards.push({ id, title, cardType, step, iconKey, bodyMarkdown })
+  })
+
+  return { preambleMarkdown, cards }
+}
+
+function firstBlockquotePlain(preambleMarkdown: string): string {
+  const m = preambleMarkdown.match(/^>\s*(.+)$/m)
+  return m ? m[1].trim() : ''
+}
+
+export function parseQuickStartMarkdown(markdown: string): QuickStartParseResult {
+  const parsed = parseTabbedMarkdown(markdown)
+  const issues: MarkdownValidationIssue[] = [...parsed.issues]
+  const usedCardIds = new Set<string>()
+
+  const scenarios: QuickStartScenario[] = parsed.sections.map((section) => {
+    const { preambleMarkdown, cards: rawCards } = splitScenarioIntoCards(
+      section.content,
+      section.id,
+      markdown,
+      issues,
+    )
+
+    const cards: QuickStartCard[] = rawCards.map((c) => ({
+      ...c,
+      teaserText: c.cardType === 'long' ? extractLeadingBlockquoteText(c.bodyMarkdown) : '',
+    }))
+
+    cards.forEach((c) => {
+      if (usedCardIds.has(c.id)) {
+        issues.push({
+          line: absLineForCard(markdown, c.id),
+          message: `Дублирующийся id карточки "${c.id}" (id карточек должны быть уникальны в файле).`,
+        })
+      }
+      usedCardIds.add(c.id)
+    })
+
+    return {
+      id: section.id,
+      title: section.title,
+      preambleMarkdown,
+      cards,
+    }
+  })
+
+  const defaultPageSubtitle =
+    scenarios.length > 0 ? firstBlockquotePlain(scenarios[0].preambleMarkdown) : ''
+
+  return { scenarios, issues, defaultPageSubtitle }
 }

@@ -7,6 +7,9 @@ import { indocsApi } from '@/api/indocs'
 import { goodsApi } from '@/api/goods'
 import { ordersApi } from '@/api/orders'
 import PageHeader from '@/components/ui/PageHeader'
+import InlineHelpPanel, { HelpIconButton } from '@/components/ui/InlineHelpPanel'
+import { getPageHelp, getTabHelp } from '@/content/pageHelp'
+import { usePageHelpWriterMode } from '@/content/authoringState'
 import Spinner from '@/components/ui/Spinner'
 import EmptyState from '@/components/ui/EmptyState'
 import JsonViewer from '@/components/ui/JsonViewer'
@@ -25,6 +28,22 @@ import { OutdocsRow } from '@/components/ui/OutdocsRow'
 type CoreTab = 'attrs' | 'outdocs' | 'json' | 'files' | 'photos'
 type TypeTab = 'goods' | 'orders' | 'boxes'
 type Tab = CoreTab | TypeTab
+
+/** Статус «Ожидание» — единственный, в котором документ можно удалить без согласования со складом */
+const INDOC_STATE_WAITING = 1
+
+const PAGE_HELP_KEY = 'indoc-detail'
+
+const TAB_HELP_TITLES: Record<Tab, string> = {
+  goods: 'Товары',
+  orders: 'Заказы',
+  boxes: 'Коробки',
+  attrs: 'Атрибуты',
+  outdocs: 'Исходящие документы',
+  files: 'Файлы',
+  photos: 'Фото',
+  json: 'JSON',
+}
 
 function typeTab(indocType: WebIndocListItem['indoc_type']): { id: TypeTab; label: string } | null {
   switch (indocType) {
@@ -326,11 +345,24 @@ export default function IndocDetailPage() {
   const listItem = location.state?.item as IndocListItem | undefined
 
   const { confirm, confirmNode } = useConfirmDialog()
+  const writerMode = usePageHelpWriterMode()
+  const pageHelp = getPageHelp(PAGE_HELP_KEY)
+  const [pageHelpOpen, setPageHelpOpen] = useState(false)
 
   const tabKey = `indoc-tab-${indocId}`
   const initialTab: Tab = (sessionStorage.getItem(tabKey) as Tab | null)
     ?? (listItem?.indoc_type ? (typeTab(listItem.indoc_type)?.id ?? 'attrs') : 'attrs')
   const [tab, setTab] = useState<Tab>(initialTab)
+  const tabHelp = getTabHelp(PAGE_HELP_KEY, tab)
+  const [tabHelpOpen, setTabHelpOpen] = useState(false)
+
+  useEffect(() => {
+    if (writerMode) setPageHelpOpen(true)
+  }, [writerMode])
+
+  useEffect(() => {
+    if (writerMode) setTabHelpOpen(true)
+  }, [tab, writerMode])
 
   function handleSetTab(t: Tab) {
     sessionStorage.setItem(tabKey, t)
@@ -421,6 +453,35 @@ export default function IndocDetailPage() {
 
   const specificTab = indocType ? typeTab(indocType) : null
   const outdocs = webItem?.outdocs
+  const canDeleteIndoc = indocState === INDOC_STATE_WAITING
+  const deleteBlockedHint =
+    indocState == null
+      ? 'Статус документа ещё загружается'
+      : `Удалить можно только в статусе «Ожидание». Сейчас: «${stateDescrip ?? '—'}».`
+
+  const deleteButton = (
+    <button
+      type="button"
+      className={
+        canDeleteIndoc
+          ? 'btn-danger'
+          : 'btn bg-gray-100 text-gray-400 border border-gray-200 cursor-not-allowed hover:bg-gray-100'
+      }
+      disabled={!canDeleteIndoc || deleteMutation.isPending}
+      onClick={
+        canDeleteIndoc
+          ? async () => {
+              if (await confirm('Удалить документ?', { confirmLabel: 'Удалить' })) {
+                deleteMutation.mutate()
+              }
+            }
+          : undefined
+      }
+    >
+      Удалить
+    </button>
+  )
+
   const tabs: Array<{ id: Tab; label: string }> = [
     ...(specificTab ? [{
       id: specificTab.id,
@@ -444,6 +505,9 @@ export default function IndocDetailPage() {
       <PageHeader
         title={
           <>
+            {(writerMode || pageHelp) && (
+              <HelpIconButton onClick={() => setPageHelpOpen((v) => !v)} size="lg" title="Пояснение к карточке документа" />
+            )}
             {indocType ? dictEnum('indoc_type', indocType) : indocId}
             {indocState != null && stateDescrip && (
               <IndocStateBadge state={indocState} descrip={stateDescrip} />
@@ -460,31 +524,61 @@ export default function IndocDetailPage() {
           ]} />
         }
         actions={
-          <button
-            className="btn-danger"
-            onClick={async () => { if (await confirm('Удалить документ?', { confirmLabel: 'Удалить' })) deleteMutation.mutate() }}
-            disabled={deleteMutation.isPending}
-          >
-            Удалить
-          </button>
+          canDeleteIndoc ? deleteButton : <Hint text={deleteBlockedHint}>{deleteButton}</Hint>
         }
       />
 
+      {(writerMode || pageHelp) && (
+        <InlineHelpPanel
+          content={pageHelp?.content ?? ''}
+          marker={`page:${PAGE_HELP_KEY}`}
+          markerTemplate={`## Карточка входящего документа {#page:${PAGE_HELP_KEY}}`}
+          isOpen={pageHelpOpen}
+          onClose={() => setPageHelpOpen(false)}
+          isAuthoringMode={writerMode}
+          className="-mt-4 mb-4"
+        />
+      )}
+
       <div className="flex gap-1 mb-4 border-b border-gray-200">
-        {tabs.map((t) => (
-          <button
-            key={t.id}
-            onClick={() => handleSetTab(t.id)}
-            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
-              tab === t.id
-                ? 'border-primary-600 text-primary-600'
-                : 'border-transparent text-gray-500 hover:text-gray-700'
-            }`}
-          >
-            {t.label}
-          </button>
-        ))}
+        {tabs.map((t) => {
+          const isActive = tab === t.id
+          const helpForTab = getTabHelp(PAGE_HELP_KEY, t.id)
+          return (
+            <button
+              key={t.id}
+              type="button"
+              onClick={() => handleSetTab(t.id)}
+              className={`inline-flex items-center gap-0.5 px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+                isActive
+                  ? 'border-primary-600 text-primary-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700'
+              }`}
+            >
+              {isActive && (writerMode || helpForTab) && (
+                <HelpIconButton
+                  asSpan
+                  onClick={() => setTabHelpOpen((v) => !v)}
+                  title={`Пояснение: ${t.label}`}
+                />
+              )}
+              {t.label}
+            </button>
+          )
+        })}
       </div>
+
+      {(writerMode || tabHelp) && (
+        <InlineHelpPanel
+          content={tabHelp?.content ?? ''}
+          marker={`tab:${PAGE_HELP_KEY}:${tab}`}
+          markerTemplate={`### ${TAB_HELP_TITLES[tab]} {#tab:${PAGE_HELP_KEY}:${tab}}`}
+          isOpen={tabHelpOpen}
+          onClose={() => setTabHelpOpen(false)}
+          isAuthoringMode={writerMode}
+          className="mb-4"
+        />
+      )}
 
       {tab === 'goods'   && indoc    && <GoodsTab   indoc={indoc} />}
       {tab === 'orders'  && indoc    && <OrdersTab  indoc={indoc} />}

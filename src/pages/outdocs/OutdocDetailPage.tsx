@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { isTextSelected } from '@/utils/selection'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
@@ -8,6 +8,9 @@ import { goodsApi } from '@/api/goods'
 import { ordersApi } from '@/api/orders'
 import OrderStateBadge from '@/components/ui/OrderStateBadge'
 import PageHeader from '@/components/ui/PageHeader'
+import InlineHelpPanel, { HelpIconButton } from '@/components/ui/InlineHelpPanel'
+import { getPageHelp, getTabHelp } from '@/content/pageHelp'
+import { usePageHelpWriterMode } from '@/content/authoringState'
 import Spinner from '@/components/ui/Spinner'
 import EmptyState from '@/components/ui/EmptyState'
 import { dict, dictEnum } from '@/constants/dict'
@@ -24,6 +27,24 @@ import { OutdocsBlock, OutdocsRow } from '@/components/ui/OutdocsRow'
 type CoreTab = 'goods' | 'sn' | 'attrs' | 'files' | 'photos' | 'json'
 type TypeTab = 'supply_goods' | 'supply_expiry' | 'shipment_pallets' | 'correction_goods' | 'shipments' | 'outdoc_orders' | 'return_orders'
 type Tab = CoreTab | TypeTab
+
+const PAGE_HELP_KEY = 'outdoc-detail'
+
+const TAB_HELP_TITLES: Record<Tab, string> = {
+  supply_goods: 'Принятые товары',
+  supply_expiry: 'Срок годности',
+  shipment_pallets: 'Паллеты и короба',
+  correction_goods: 'Корректировка остатков',
+  shipments: 'Отправления',
+  outdoc_orders: 'Заказы',
+  return_orders: 'Возвраты',
+  goods: 'Движение товаров',
+  sn: 'Серийные номера',
+  attrs: 'Атрибуты',
+  files: 'Файлы',
+  photos: 'Фото',
+  json: 'JSON',
+}
 
 const SHIPMENT_TYPES      = new Set(['goods_shipment', 'goods_shipment_ready'])
 const ORDERS_TYPES        = new Set(['orders_pallet', 'orders_shipment'])
@@ -1036,6 +1057,20 @@ export default function OutdocDetailPage() {
   )
   const tab: Tab = tabOverride ?? (outdocType ? getDefaultTab(outdocType) : 'attrs')
 
+  const writerMode = usePageHelpWriterMode()
+  const pageHelp = getPageHelp(PAGE_HELP_KEY)
+  const [pageHelpOpen, setPageHelpOpen] = useState(false)
+  const tabHelp = getTabHelp(PAGE_HELP_KEY, tab)
+  const [tabHelpOpen, setTabHelpOpen] = useState(false)
+
+  useEffect(() => {
+    if (writerMode) setPageHelpOpen(true)
+  }, [writerMode])
+
+  useEffect(() => {
+    if (writerMode) setTabHelpOpen(true)
+  }, [tab, writerMode])
+
   function handleSetTab(t: Tab) {
     sessionStorage.setItem(tabKey, t)
     setTabOverride(t)
@@ -1166,9 +1201,14 @@ export default function OutdocDetailPage() {
     <>
       <PageHeader
         title={
-          outdocType
-            ? dictEnum('outdoc_type', outdocType)
-            : common?.outdoc_type_descrip ?? `Документ #${outdocId}`
+          <>
+            {(writerMode || pageHelp) && (
+              <HelpIconButton onClick={() => setPageHelpOpen((v) => !v)} size="lg" title="Пояснение к карточке документа" />
+            )}
+            {outdocType
+              ? dictEnum('outdoc_type', outdocType)
+              : common?.outdoc_type_descrip ?? `Документ #${outdocId}`}
+          </>
         }
         subtitle={
           <>
@@ -1207,21 +1247,57 @@ export default function OutdocDetailPage() {
         }
       />
 
+      {(writerMode || pageHelp) && (
+        <InlineHelpPanel
+          content={pageHelp?.content ?? ''}
+          marker={`page:${PAGE_HELP_KEY}`}
+          markerTemplate={`## Карточка исходящего документа {#page:${PAGE_HELP_KEY}}`}
+          isOpen={pageHelpOpen}
+          onClose={() => setPageHelpOpen(false)}
+          isAuthoringMode={writerMode}
+          className="-mt-4 mb-4"
+        />
+      )}
+
       <div className="flex gap-1 mb-4 border-b border-gray-200">
-        {tabs.map((t) => (
-          <button
-            key={t.id}
-            onClick={() => handleSetTab(t.id)}
-            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
-              tab === t.id
-                ? 'border-primary-600 text-primary-600'
-                : 'border-transparent text-gray-500 hover:text-gray-700'
-            }`}
-          >
-            {t.label}
-          </button>
-        ))}
+        {tabs.map((t) => {
+          const isActive = tab === t.id
+          const helpForTab = getTabHelp(PAGE_HELP_KEY, t.id)
+          return (
+            <button
+              key={t.id}
+              type="button"
+              onClick={() => handleSetTab(t.id)}
+              className={`inline-flex items-center gap-0.5 px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+                isActive
+                  ? 'border-primary-600 text-primary-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700'
+              }`}
+            >
+              {isActive && (writerMode || helpForTab) && (
+                <HelpIconButton
+                  asSpan
+                  onClick={() => setTabHelpOpen((v) => !v)}
+                  title={`Пояснение: ${t.label}`}
+                />
+              )}
+              {t.label}
+            </button>
+          )
+        })}
       </div>
+
+      {(writerMode || tabHelp) && (
+        <InlineHelpPanel
+          content={tabHelp?.content ?? ''}
+          marker={`tab:${PAGE_HELP_KEY}:${tab}`}
+          markerTemplate={`### ${TAB_HELP_TITLES[tab]} {#tab:${PAGE_HELP_KEY}:${tab}}`}
+          isOpen={tabHelpOpen}
+          onClose={() => setTabHelpOpen(false)}
+          isAuthoringMode={writerMode}
+          className="mb-4"
+        />
+      )}
 
       {tab === 'supply_goods'      && <SupplyGoodsTab goods={supplyGoods} />}
       {tab === 'supply_expiry'     && <ExpiryTab items={supplyExpiry} />}

@@ -3,7 +3,7 @@ import { useEffect } from 'react'
 interface Props {
   isOpen: boolean
   onClose: () => void
-  title: string
+  title: React.ReactNode
   children: React.ReactNode
   size?: 'sm' | 'md' | 'lg' | 'xl'
   headerActions?: React.ReactNode
@@ -31,7 +31,7 @@ export default function Modal({ isOpen, onClose, title, children, size = 'md', h
       <div className="absolute inset-0 bg-black/40" onClick={onClose} />
       <div className={`relative bg-white rounded-xl shadow-xl w-full ${sizeClass[size]} mx-4 max-h-[90vh] flex flex-col`}>
         <div className="flex items-center gap-3 px-6 py-4 border-b border-gray-200 shrink-0">
-          <h2 className="text-lg font-semibold text-gray-900 flex-1">{title}</h2>
+          <h2 className="text-lg font-semibold text-gray-900 flex flex-1 items-center gap-2 min-w-0">{title}</h2>
           {headerActions && <div className="flex items-center gap-2">{headerActions}</div>}
           <button
             onClick={onClose}

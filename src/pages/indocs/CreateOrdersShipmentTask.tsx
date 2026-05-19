@@ -1,4 +1,4 @@
-import { useState, FormEvent } from 'react'
+import { useState, useEffect, FormEvent } from 'react'
 import DownloadFilesModal from '@/components/ui/DownloadFilesModal'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
@@ -7,6 +7,9 @@ import { indocsApi } from '@/api/indocs'
 import type { OrderCreateItem } from '@/types/order'
 import type { ParseError } from '@/utils/orderTemplateParser'
 import Modal from '@/components/ui/Modal'
+import InlineHelpPanel, { HelpIconButton } from '@/components/ui/InlineHelpPanel'
+import { getTabHelp } from '@/content/pageHelp'
+import { usePageHelpWriterMode } from '@/content/authoringState'
 import { useConfirmDialog } from '@/components/ui/ConfirmDialog'
 import FormAlert from '@/components/ui/FormAlert'
 import Spinner from '@/components/ui/Spinner'
@@ -29,10 +32,20 @@ interface Props {
   onClose: () => void
 }
 
+const FORM_HELP_TAB = 'create-orders-shipment'
+
 export default function CreateOrdersShipmentTask({ isOpen, onClose }: Props) {
   const qc = useQueryClient()
   const navigate = useNavigate()
   const { confirm, confirmNode } = useConfirmDialog()
+  const writerMode = usePageHelpWriterMode()
+  const formHelp = getTabHelp('indocs', FORM_HELP_TAB)
+  const [formHelpOpen, setFormHelpOpen] = useState(false)
+
+  useEffect(() => {
+    if (isOpen && writerMode) setFormHelpOpen(true)
+  }, [isOpen, writerMode])
+
   const [indocId, setIndocId] = useState('')
   const [indocTxt, setIndocTxt] = useState('')
   const [entries, setEntries] = useState<OrderEntry[]>([])
@@ -150,18 +163,32 @@ export default function CreateOrdersShipmentTask({ isOpen, onClose }: Props) {
       <Modal
         isOpen={isOpen}
         onClose={handleClose}
-        title="Задание на отгрузку заказов"
-        size="xl"
-        headerActions={
+        title={
           <>
-            <button type="submit" form="create-orders-shipment-form" className="btn-primary" disabled={mutation.isPending}>
-              {mutation.isPending && <Spinner className="w-4 h-4 text-white" />}
-              Создать документ
-            </button>
+            {(writerMode || formHelp) && (
+              <HelpIconButton
+                onClick={() => setFormHelpOpen((v) => !v)}
+                title="Пояснение к форме"
+              />
+            )}
+            <span>Задание на отгрузку заказов</span>
           </>
         }
+        size="xl"
       >
         <form id="create-orders-shipment-form" onSubmit={handleSubmit} className="flex flex-col flex-1 overflow-hidden">
+          {(writerMode || formHelp) && (
+            <InlineHelpPanel
+              content={formHelp?.content ?? ''}
+              marker={`tab:indocs:${FORM_HELP_TAB}`}
+              markerTemplate={`### Задание на отгрузку заказов {#tab:indocs:${FORM_HELP_TAB}}`}
+              isOpen={formHelpOpen}
+              onClose={() => setFormHelpOpen(false)}
+              isAuthoringMode={writerMode}
+              className="mb-4 shrink-0"
+            />
+          )}
+
           {alert && (
             <div className="mb-4 shrink-0">
               <FormAlert type={alert.type} message={alert.message} onClose={() => setAlert(null)} />
@@ -298,6 +325,12 @@ export default function CreateOrdersShipmentTask({ isOpen, onClose }: Props) {
             )}
           </div>
 
+          <div className="border-t mt-4 pt-4 shrink-0 flex justify-end">
+            <button type="submit" className="btn-primary" disabled={mutation.isPending}>
+              {mutation.isPending && <Spinner className="w-4 h-4 text-white" />}
+              Создать документ
+            </button>
+          </div>
         </form>
       </Modal>
 

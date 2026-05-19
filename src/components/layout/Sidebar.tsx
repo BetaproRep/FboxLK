@@ -1,4 +1,5 @@
 import { NavLink } from 'react-router-dom'
+import { useEffect, useMemo, useState } from 'react'
 
 interface NavItem {
   label: string
@@ -74,6 +75,16 @@ const mainNav: NavItem[] = [
 
 const bottomNav: NavItem[] = [
   {
+    label: 'Авторинг',
+    to: '/authoring',
+    icon: (
+      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+          d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5M18.414 2.586a2 2 0 112.828 2.828L12 14.657l-4 1 1-4 9.414-9.071z" />
+      </svg>
+    ),
+  },
+  {
     label: 'Справка',
     to: '/help',
     icon: (
@@ -105,14 +116,28 @@ function NavGroup({ items }: { items: NavItem[] }) {
   )
 }
 
-export default function Sidebar() {
+interface SidebarProps {
+  logoUrl?: string
+}
+
+export default function Sidebar({ logoUrl }: SidebarProps) {
+  const defaultLogoUrl = useMemo(() => `${import.meta.env.BASE_URL}logo.png`, [])
+  const [logoFailed, setLogoFailed] = useState(false)
+
+  useEffect(() => {
+    setLogoFailed(false)
+  }, [logoUrl])
+
+  const resolvedLogoUrl = logoUrl && !logoFailed ? logoUrl : defaultLogoUrl
+
   return (
     <aside className="w-64 bg-white border-r border-gray-200 flex flex-col h-full">
       <div className="overflow-hidden">
         <img
-          src={`${import.meta.env.BASE_URL}logo.png`}
+          src={resolvedLogoUrl}
           alt="FBox"
           className="block w-full h-28 object-contain scale-[1.18] origin-center"
+          onError={() => setLogoFailed(true)}
         />
       </div>
       <nav className="flex-1 p-4 flex flex-col overflow-y-auto">
