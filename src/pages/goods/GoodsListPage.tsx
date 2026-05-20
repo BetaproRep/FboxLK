@@ -350,11 +350,12 @@ export default function GoodsListPage() {
             <option value="pack">Упаковка</option>
             <option value="service">Услуга</option>
           </select>
-        )}
+        )} 
+
 
         <input
           className="input w-56"
-          placeholder="Поиск по списку..."
+          placeholder="Быстрый поиск..."
           value={search}
           onChange={(e) => {
             setSearch(e.target.value)

@@ -462,7 +462,7 @@ export default function GoodDetailPage() {
           <input
             type="text"
             className="input w-48 text-sm"
-            placeholder="Поиск..."
+            placeholder="Быстрый поиск..."
             value={mvSearch}
             onChange={e => setMvSearch(e.target.value)}
           />
@@ -533,7 +533,7 @@ export default function GoodDetailPage() {
             <div className="w-px h-5 bg-gray-200" />
             <input
               className="input w-56 text-sm"
-              placeholder="Поиск по списку..."
+              placeholder="Быстрый поиск..."
               value={ordSearch}
               onChange={e => setOrdSearch(e.target.value)}
             />

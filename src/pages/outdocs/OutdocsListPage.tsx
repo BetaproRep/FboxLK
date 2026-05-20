@@ -151,18 +151,18 @@ export default function OutdocsListPage() {
 
   function exportToExcel() {
     const rows = sortedItems.map((item) => ({
-      [dict('created_at', 'short')]: new Date(item.created_at).toLocaleString(),
+      [dict('created_at__outdoc', 'short')]: new Date(item.created_at).toLocaleString(),
       [dict('outdoc_id', 'short')]: item.outdoc_id,
       [dict('outdoc_type_descrip', 'short')]: item.outdoc_type_descrip,
       [dict('outdoc_date', 'short')]: new Date(item.outdoc_date).toLocaleDateString(),
       [dict('outdoc_txt', 'short')]: item.outdoc_txt ?? '',
       [dict('locked', 'short')]: item.locked ? 'Да' : 'Нет',
-      'Входящий документ': item.indoc?.indoc_id ?? '',
-      'Примечание входящего': item.indoc?.indoc_txt ?? '',
+      'Задание': item.indoc?.indoc_id ?? '',
+      'Примечание к заданию': item.indoc?.indoc_txt ?? '',
     }))
     const ws = XLSX.utils.json_to_sheet(rows)
     const wb = XLSX.utils.book_new()
-    XLSX.utils.book_append_sheet(wb, ws, 'Исходящие документы')
+    XLSX.utils.book_append_sheet(wb, ws, 'Отчёты склада')
     XLSX.writeFile(wb, `outdocs_${dateFrom}_${dateTo}.xlsx`)
   }
 
@@ -177,7 +177,7 @@ export default function OutdocsListPage() {
         title={
           <>
             {(writerMode || pageHelp) && <HelpIconButton onClick={() => setPageHelpOpen((v) => !v)} size="lg" />}
-            <span>Исходящие документы</span>
+            <span>Отчёты склада</span>
           </>
         }
       />
@@ -186,7 +186,7 @@ export default function OutdocsListPage() {
         <InlineHelpPanel
           content={pageHelp?.content ?? ''}
           marker="page:outdocs"
-          markerTemplate="## Исходящие документы {#page:outdocs}"
+          markerTemplate="## Отчёты склада {#page:outdocs}"
           isOpen={pageHelpOpen}
           onClose={() => setPageHelpOpen(false)}
           isAuthoringMode={writerMode}
@@ -206,14 +206,14 @@ export default function OutdocsListPage() {
           value={outdocType}
           onChange={(e) => { setOutdocType(e.target.value); sessionStorage.setItem('outdocs_outdoc_type', e.target.value); handleFilterChange() }}
         >
-          <option value="">Все типы документов</option>
+          <option value="">Все типы отчётов</option>
           {OUTDOC_TYPES.map(([value, label]) => (
             <option key={value} value={value}>{label}</option>
           ))}
         </select>
         <input
           className="input w-56"
-          placeholder="Поиск по списку..."
+          placeholder="Быстрый поиск..."
           value={search}
           onChange={(e) => { setSearch(e.target.value); sessionStorage.setItem('outdocs_search', e.target.value) }}
         />
@@ -232,7 +232,7 @@ export default function OutdocsListPage() {
             <Spinner className="w-8 h-8 text-primary-600" />
           </div>
         ) : allItems.length === 0 ? (
-          <EmptyState title="Документы не найдены" description="Измените период фильтрации" />
+          <EmptyState title="Отчёты не найдены" description="Измените период фильтрации" />
         ) : (
           <table className="min-w-full border-collapse">
             <thead className="bg-gray-50">

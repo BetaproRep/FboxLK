@@ -33,6 +33,13 @@ const quickStartCardIcons: Record<string, React.ReactNode> = {
   'tracking-orders': qsIcon(
     'M9 19V6l-2 2m4-2v13m0 0l3-3m-3 3l-3-3m11-3a9 9 0 11-18 0 9 9 0 0118 0z',
   ),
+  help: qsIcon(
+    'M8.228 9c.549-1.165 1.858-2 3.042-2 1.477 0 2.5 1.323 2.5 2.5 0 .636-.31 1.137-.845 1.502-.404.263-.655.703-.655 1.207v.5M12 17h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z',
+  ),
+  navigation: qsIcon(
+    'M8 7h12m0 0l-4-4m4 4l-4 4m-8 6H4m0 0l4 4m-4-4l4-4',
+  ),
+  tables: qsIcon('M3 10h18M3 6h18M3 14h18M3 18h18M8 6v12M14 6v12'),
 }
 
 /** Иконка только при явном `icon=` в md и известном ключе реестра */

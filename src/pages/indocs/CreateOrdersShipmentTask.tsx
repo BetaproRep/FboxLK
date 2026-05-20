@@ -128,7 +128,7 @@ export default function CreateOrdersShipmentTask({ isOpen, onClose }: Props) {
         orders: entries.map((e) => e.order),
       }),
     onSuccess: (_, createdIndocId) => {
-      toast.success('Документ создан')
+      toast.success('Задание создано')
       qc.invalidateQueries({ queryKey: ['indocs'] })
       navigate(`/indocs/${encodeURIComponent(createdIndocId)}`)
       handleClose()
@@ -328,7 +328,7 @@ export default function CreateOrdersShipmentTask({ isOpen, onClose }: Props) {
           <div className="border-t mt-4 pt-4 shrink-0 flex justify-end">
             <button type="submit" className="btn-primary" disabled={mutation.isPending}>
               {mutation.isPending && <Spinner className="w-4 h-4 text-white" />}
-              Создать документ
+              Создать задание
             </button>
           </div>
         </form>

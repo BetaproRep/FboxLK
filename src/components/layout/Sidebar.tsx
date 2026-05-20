@@ -32,7 +32,7 @@ const topNav: NavItem[] = [
 
 const mainNav: NavItem[] = [
   {
-    label: 'Входящие документы',
+    label: 'Задания складу',
     to: '/indocs',
     icon: (
       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -42,7 +42,7 @@ const mainNav: NavItem[] = [
     ),
   },
   {
-    label: 'Исходящие документы',
+    label: 'Отчёты склада',
     to: '/outdocs',
     icon: (
       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

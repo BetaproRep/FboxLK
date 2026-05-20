@@ -411,7 +411,7 @@ function OutdocOrdersTab({ orders, outdocType }: { orders: OutdocOrderItem[]; ou
             <SortTh sortKey="state"         label={dict('state', 'short')}         hint={dict('state', 'hint')}         {...sortProps} />
             <SortTh sortKey="clnt_name"     label={dict('clnt_name', 'short')}     hint={dict('clnt_name', 'hint')}     {...sortProps} />
             <SortTh sortKey="delivery_name" label={dict('delivery_name', 'short')} hint={dict('delivery_name', 'hint')} {...sortProps} />
-            <SortTh sortKey="created_at"    label={dict('created_at', 'short')}    hint={dict('created_at', 'hint')}    {...sortProps} />
+            <SortTh sortKey="created_at"    label={dict('created_at__outdoc', 'short')}    hint={dict('created_at__outdoc', 'hint')}    {...sortProps} />
             {showPayment  && <SortTh sortKey="payment"   label={dict('payment', 'short')}   hint={dict('payment', 'hint')}   {...sortProps} className="text-right" />}
             {showClntDate && <SortTh sortKey="clnt_date" label={dict('clnt_date', 'short')} hint={dict('clnt_date', 'hint')} {...sortProps} />}
             {showFileDate && <SortTh sortKey="file_date" label={dict('file_date', 'short')} hint={dict('file_date', 'hint')} {...sortProps} />}
@@ -863,7 +863,7 @@ function SerialNumbersTab({ outdocId }: { outdocId: number }) {
       <div className="mb-3">
         <input
           className="input w-56"
-          placeholder="Поиск по списку..."
+          placeholder="Быстрый поиск..."
           value={search}
           onChange={(e) => { setSearch(e.target.value); sessionStorage.setItem(snSearchKey, e.target.value) }}
         />
@@ -981,7 +981,7 @@ function GoodsMovementTab({ outdocId }: { outdocId: number }) {
       <div className="mb-3">
         <input
           className="input w-56"
-          placeholder="Поиск по списку..."
+          placeholder="Быстрый поиск..."
           value={search}
           onChange={(e) => { setSearch(e.target.value); sessionStorage.setItem(goodsSearchKey, e.target.value) }}
         />
@@ -1203,11 +1203,11 @@ export default function OutdocDetailPage() {
         title={
           <>
             {(writerMode || pageHelp) && (
-              <HelpIconButton onClick={() => setPageHelpOpen((v) => !v)} size="lg" title="Пояснение к карточке документа" />
+              <HelpIconButton onClick={() => setPageHelpOpen((v) => !v)} size="lg" title="Пояснение к карточке отчёта" />
             )}
             {outdocType
               ? dictEnum('outdoc_type', outdocType)
-              : common?.outdoc_type_descrip ?? `Документ #${outdocId}`}
+              : common?.outdoc_type_descrip ?? `Отчет #${outdocId}`}
           </>
         }
         subtitle={
@@ -1226,7 +1226,7 @@ export default function OutdocDetailPage() {
             ]} />
             {common?.indoc_id && (
               <p className="text-sm text-gray-500 mt-1">
-                <span className="mr-2">Входящий документ:</span>
+                <span className="mr-2">Задание:</span>
                 <span className="inline-flex flex-wrap items-center gap-x-2">
                   {common.indoc_created_at && (
                     <span>{new Date(common.indoc_created_at).toLocaleString('ru-RU')}</span>
@@ -1251,7 +1251,7 @@ export default function OutdocDetailPage() {
         <InlineHelpPanel
           content={pageHelp?.content ?? ''}
           marker={`page:${PAGE_HELP_KEY}`}
-          markerTemplate={`## Карточка исходящего документа {#page:${PAGE_HELP_KEY}}`}
+          markerTemplate={`## Карточка отчёта {#page:${PAGE_HELP_KEY}}`}
           isOpen={pageHelpOpen}
           onClose={() => setPageHelpOpen(false)}
           isAuthoringMode={writerMode}

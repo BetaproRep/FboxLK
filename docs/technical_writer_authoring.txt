@@ -84,7 +84,7 @@
   - **type=long** — в сетке показываются заголовок, тизер из цитат и «Подробнее»; полный текст — на отдельном экране;
   - **type=short** — весь markdown карточки показывается сразу в ячейке сетки;
   - **step=N** (необязательно) — если указан, в карточке показывается подпись «Шаг N»; без атрибута `step` бейдж не выводится;
-  - **icon=ключ** (необязательно) — если указан и ключ есть в реестре портала, показывается иконка; без атрибута `icon` или при неизвестном ключе иконка не выводится (Font Awesome в md не используется).
+  - **icon=ключ** (необязательно) — если указан и ключ есть в реестре портала, показывается иконка; без атрибута `icon` или при неизвестном ключе иконка не выводится (Font Awesome в md не используется). Ключи реестра: `goods`, `supply`, `tracking-supply`, `orders`, `tracking-orders`, `help`, `navigation`, `tables`.
 
 3.2. Контент карточки (markdown под H2)
 - Между заголовком H2 текущей карточки и следующим H2 — **сырое тело** карточки: списки, абзацы, заголовки H3/H4, ссылки и т.д. Рендерится через markdown.
@@ -146,10 +146,10 @@
 - ## Дашборд {#page:dashboard}
 - ## Быстрый старт {#page:quick-start}
 - ## Справка {#page:help}
-- ## Входящие документы {#page:indocs}
-- ## Карточка входящего документа {#page:indoc-detail}
-- ## Исходящие документы {#page:outdocs}
-- ## Карточка исходящего документа {#page:outdoc-detail}
+- ## Задания складу {#page:indocs}
+- ## Карточка задания {#page:indoc-detail}
+- ## Отчёты склада {#page:outdocs}
+- ## Карточка отчёта {#page:outdoc-detail}
 - ## Товары {#page:goods}
 - ## Карточка товара {#page:good-detail}
 - ## Заказы {#page:orders}
@@ -192,11 +192,11 @@
   - tab:dashboard:v1
   - tab:help:<id активного таба справки>
   - tab:quick-start:<id карточки> (длинная карточка открыта на /quick-start?card=<id>; короткие карточки без отдельного экрана — при необходимости откройте сценарий с этой карточкой для подсказки)
-  - tab:indocs:create-goods-supply (форма «Задание на оприходование» на странице входящих документов)
+  - tab:indocs:create-goods-supply (форма «Задание на оприходование» на странице Заданий складу)
   - tab:indocs:create-goods-shipment (форма «Задание на отгрузку товаров»)
   - tab:indocs:create-orders-shipment (форма «Задание на отгрузку заказов»)
-  - tab:indoc-detail:goods | orders | boxes | attrs | outdocs | files | photos | json (вкладки карточки входящего документа /indocs/:id)
-  - tab:outdoc-detail:supply_goods | supply_expiry | shipment_pallets | correction_goods | shipments | outdoc_orders | return_orders | goods | sn | attrs | files | photos | json (вкладки карточки исходящего /outdocs/:id)
+  - tab:indoc-detail:goods | orders | boxes | attrs | outdocs | files | photos | json (вкладки карточки задания /indocs/:id)
+  - tab:outdoc-detail:supply_goods | supply_expiry | shipment_pallets | correction_goods | shipments | outdoc_orders | return_orders | goods | sn | attrs | files | photos | json (вкладки карточки отчёта /outdocs/:id)
   - tab:goods:upload-goods (форма «Загрузка номенклатуры» на странице товаров)
   - tab:good-detail:info | movements | orders | eans | photos | sn (вкладки карточки товара /goods/:id)
   - tab:order-detail:goods | outdocs | events | shipment | photos | json (вкладки карточки заказа /orders/:id)

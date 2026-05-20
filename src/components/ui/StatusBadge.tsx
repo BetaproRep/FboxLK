@@ -4,7 +4,7 @@ interface Props {
 }
 
 const colorMap: Record<string, string> = {
-  // Входящие / исходящие
+  // Задания складу / Отчёты склада
   new: 'bg-blue-100 text-blue-800',
   processing: 'bg-yellow-100 text-yellow-800',
   accepted: 'bg-green-100 text-green-800',

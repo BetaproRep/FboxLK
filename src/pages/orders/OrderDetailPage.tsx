@@ -24,7 +24,7 @@ const PAGE_HELP_KEY = 'order-detail'
 
 const TAB_HELP_TITLES: Record<Tab, string> = {
   goods: 'Состав заказа',
-  outdocs: 'Исходящие документы',
+  outdocs: 'Отчёты склада',
   events: 'События на складе',
   shipment: 'Отправление',
   photos: 'Фото',
@@ -124,7 +124,7 @@ export default function OrderDetailPage() {
 
   const tabs: { key: Tab; label: string }[] = [
     { key: 'goods',   label: `Состав заказа (${order.goods?.reduce((s, g) => s + g.qnt, 0) ?? 0})` },
-    { key: 'outdocs', label: `Исходящие документы (${order.outdocs?.length ?? 0})` },
+    { key: 'outdocs', label: `Отчёты склада (${order.outdocs?.length ?? 0})` },
     { key: 'events',   label: `События на складе (${order.events?.length ?? 0})` },
     { key: 'shipment', label: `Отправление (${order.plt_info?.units?.length ?? 0})` },
     { key: 'photos',   label: `Фото (${order.photos?.length ?? 0})` },
@@ -274,7 +274,7 @@ export default function OrderDetailPage() {
               </tbody>
             </table>
           ) : (
-            <EmptyState title="Исходящих документов нет" />
+            <EmptyState title="Отчётов склада нет" />
           )}
         </div>
       )}

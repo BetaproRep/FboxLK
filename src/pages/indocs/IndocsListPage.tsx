@@ -119,7 +119,7 @@ export default function IndocsListPage() {
     const text = await navigator.clipboard.readText()
     const rows = parseClipboard(text)
     if (rows.length === 0) {
-      setClipboardError('Скопируйте номер документа или список номеров из excel в буфер обмена. Затем нажмите эту кнопку')
+      setClipboardError('Скопируйте номер задания или список номеров из excel в буфер обмена. Затем нажмите эту кнопку')
       return
     }
     setClipboardError(null)
@@ -226,24 +226,24 @@ export default function IndocsListPage() {
         '#': r.rowNum,
         [dict('indoc_id', 'short')]: r.indoc_id,
         'Примечание': r.note,
-        [dict('indoc_type_descrip', 'short')]: r.item?.indoc_type_descrip ?? 'Документ не найден',
-        [dict('created_at', 'short')]: r.item ? new Date(r.item.created_at).toLocaleString() : '',
+        [dict('indoc_type_descrip', 'short')]: r.item?.indoc_type_descrip ?? 'Задание не найдено',
+        [dict('created_at__indoc', 'short')]: r.item ? new Date(r.item.created_at).toLocaleString() : '',
         [dict('indoc_txt', 'short')]: r.item?.indoc_txt ?? '',
       }))
       const ws = XLSX.utils.json_to_sheet(rows)
       const wb = XLSX.utils.book_new()
-      XLSX.utils.book_append_sheet(wb, ws, 'Входящие документы')
+      XLSX.utils.book_append_sheet(wb, ws, 'Задания складу')
       XLSX.writeFile(wb, `indocs_list.xlsx`)
     } else {
       const rows = sortedItems.map((item) => ({
         [dict('indoc_id', 'short')]: item.indoc_id,
         [dict('indoc_type_descrip', 'short')]: item.indoc_type_descrip,
-        [dict('created_at', 'short')]: new Date(item.created_at).toLocaleString(),
+        [dict('created_at__indoc', 'short')]: new Date(item.created_at).toLocaleString(),
         [dict('indoc_txt', 'short')]: item.indoc_txt ?? '',
       }))
       const ws = XLSX.utils.json_to_sheet(rows)
       const wb = XLSX.utils.book_new()
-      XLSX.utils.book_append_sheet(wb, ws, 'Входящие документы')
+      XLSX.utils.book_append_sheet(wb, ws, 'Задания складу')
       XLSX.writeFile(wb, `indocs_${dateFrom}_${dateTo}.xlsx`)
     }
   }
@@ -256,7 +256,7 @@ export default function IndocsListPage() {
         title={
           <>
             {(writerMode || pageHelp) && <HelpIconButton onClick={() => setPageHelpOpen((v) => !v)} size="lg" />}
-            <span>Входящие документы</span>
+            <span>Задания складу</span>
           </>
         }
         actions={
@@ -278,7 +278,7 @@ export default function IndocsListPage() {
         <InlineHelpPanel
           content={pageHelp?.content ?? ''}
           marker="page:indocs"
-          markerTemplate="## Входящие документы {#page:indocs}"
+          markerTemplate="## Задания складу {#page:indocs}"
           isOpen={pageHelpOpen}
           onClose={() => setPageHelpOpen(false)}
           isAuthoringMode={writerMode}
@@ -290,7 +290,7 @@ export default function IndocsListPage() {
         {/* Clipboard: badge или кнопка */}
         {clipboardRows ? (
           <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-primary-100 text-primary-700 text-sm font-medium">
-            Список: {clipboardRows.length} документов
+            Список: {clipboardRows.length} заданий
             <button
               className="ml-1 text-primary-500 hover:text-primary-800 leading-none"
               onClick={clearClipboardMode}
@@ -301,9 +301,9 @@ export default function IndocsListPage() {
           </span>
         ) : (
           <div className="relative inline-block" ref={clipboardErrorRef}>
-            <Hint text={dict('btn.clipboard_load', 'hint')}>
+            <Hint text={dict('btn.clipboard_load__indoc', 'hint')}>
               <button className="btn-secondary" onClick={loadFromClipboard}>
-                По списку документов из буфера
+                По списку заданий из буфера
               </button>
             </Hint>
             {clipboardError && (
@@ -321,7 +321,7 @@ export default function IndocsListPage() {
         {/* Незавершённые: badge или кнопка */}
         {notCompletedOnly ? (
           <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-orange-100 text-orange-700 text-sm font-medium">
-            Незавершённые документы
+            Незавершённые задания
             <button
               className="ml-1 text-orange-500 hover:text-orange-800 leading-none"
               onClick={clearNotCompletedOnly}
@@ -332,7 +332,7 @@ export default function IndocsListPage() {
           </span>
         ) : (
           <button className="btn-secondary" onClick={enterNotCompletedOnly}>
-            Незавершённые документы
+            Незавершённые задания
           </button>
         )}
 
@@ -353,7 +353,7 @@ export default function IndocsListPage() {
             value={indocType}
             onChange={(e) => { setIndocType(e.target.value); sessionStorage.setItem('indocs_indoc_type', e.target.value); handleFilterChange() }}
           >
-            <option value="">Все типы документов</option>
+            <option value="">Все типы заданий</option>
             <option value="goods_supply_task">Задание на оприходование товаров</option>
             <option value="goods_shipment_task">Задание на отгрузку товаров</option>
             <option value="orders_shipment_task">Задание на отгрузку заказов</option>
@@ -362,7 +362,7 @@ export default function IndocsListPage() {
 
         <input
           className="input w-56"
-          placeholder="Поиск по списку..."
+          placeholder="Быстрый поиск..."
           value={search}
           onChange={(e) => { setSearch(e.target.value); sessionStorage.setItem('indocs_search', e.target.value) }}
         />
@@ -382,7 +382,7 @@ export default function IndocsListPage() {
             <Spinner className="w-8 h-8 text-primary-600" />
           </div>
         ) : isEmpty ? (
-          <EmptyState title="Документы не найдены" description="Измените период или создайте новый документ" />
+          <EmptyState title="Задания не найдены" description="Измените период или создайте новое задание" />
         ) : clipboardRows && mergedRows ? (
           // Clipboard mode table
           <table className="min-w-full border-collapse">
@@ -394,7 +394,7 @@ export default function IndocsListPage() {
                 <th className="th"><Hint text={dict('indoc_state', 'hint')}>{dict('indoc_state', 'short')}</Hint></th>
                 <th className="th"><Hint text={dict('indoc_type_descrip', 'hint')}>{dict('indoc_type_descrip', 'short')}</Hint></th>
                 <th className="th"><Hint text={dict('indoc_txt', 'hint')}>{dict('indoc_txt', 'short')}</Hint></th>
-                <th className="th"><Hint text={dict('created_at', 'hint')}>{dict('created_at', 'short')}</Hint></th>
+                <th className="th"><Hint text={dict('created_at__indoc', 'hint')}>{dict('created_at__indoc', 'short')}</Hint></th>
               </tr>
             </thead>
             {mergedRows.map((row) =>

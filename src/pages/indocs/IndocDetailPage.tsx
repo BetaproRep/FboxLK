@@ -29,7 +29,7 @@ type CoreTab = 'attrs' | 'outdocs' | 'json' | 'files' | 'photos'
 type TypeTab = 'goods' | 'orders' | 'boxes'
 type Tab = CoreTab | TypeTab
 
-/** Статус «Ожидание» — единственный, в котором документ можно удалить без согласования со складом */
+/** Статус «Ожидание» — единственный, в котором задание можно удалить без согласования со складом */
 const INDOC_STATE_WAITING = 1
 
 const PAGE_HELP_KEY = 'indoc-detail'
@@ -39,7 +39,7 @@ const TAB_HELP_TITLES: Record<Tab, string> = {
   orders: 'Заказы',
   boxes: 'Коробки',
   attrs: 'Атрибуты',
-  outdocs: 'Исходящие документы',
+  outdocs: 'Отчёты склада',
   files: 'Файлы',
   photos: 'Фото',
   json: 'JSON',
@@ -287,7 +287,7 @@ function OutdocsTab({ outdocs }: { outdocs: NonNullable<WebIndocListItem['outdoc
       <table className="min-w-full divide-y divide-gray-200">
         <thead className="bg-gray-50">
           <tr>
-            <th className="th"><Hint text={dict('created_at', 'hint')}>{dict('created_at', 'short')}</Hint></th>
+            <th className="th"><Hint text={dict('created_at__outdoc', 'hint')}>{dict('created_at__outdoc', 'short')}</Hint></th>
             <th className="th"><Hint text={dict('outdoc_date', 'hint')}>{dict('outdoc_date', 'short')}</Hint></th>
             <th className="th"><Hint text={dict('outdoc_id', 'hint')}>{dict('outdoc_id', 'short')}</Hint></th>
             <th className="th"><Hint text={dict('outdoc_type_descrip', 'hint')}>{dict('outdoc_type_descrip', 'short')}</Hint></th>
@@ -409,7 +409,7 @@ export default function IndocDetailPage() {
   const deleteMutation = useMutation({
     mutationFn: () => indocsApi.delete(indocId),
     onSuccess: () => {
-      toast.success('Документ удалён')
+      toast.success('Задание удалено')
       qc.invalidateQueries({ queryKey: ['indocs'] })
       navigate('/indocs')
     },
@@ -456,7 +456,7 @@ export default function IndocDetailPage() {
   const canDeleteIndoc = indocState === INDOC_STATE_WAITING
   const deleteBlockedHint =
     indocState == null
-      ? 'Статус документа ещё загружается'
+      ? 'Статус задания ещё загружается'
       : `Удалить можно только в статусе «Ожидание». Сейчас: «${stateDescrip ?? '—'}».`
 
   const deleteButton = (
@@ -471,7 +471,7 @@ export default function IndocDetailPage() {
       onClick={
         canDeleteIndoc
           ? async () => {
-              if (await confirm('Удалить документ?', { confirmLabel: 'Удалить' })) {
+              if (await confirm('Удалить задание?', { confirmLabel: 'Удалить' })) {
                 deleteMutation.mutate()
               }
             }
@@ -493,7 +493,7 @@ export default function IndocDetailPage() {
     ...(indocType === 'goods_supply_task' || indocType === 'goods_shipment_task'
       ? [{ id: 'files' as Tab, label: 'Файлы' }]
       : []),
-    ...(outdocs?.length ? [{ id: 'outdocs' as Tab, label: `Исходящие документы (${outdocs.length})` }] : []),
+    ...(outdocs?.length ? [{ id: 'outdocs' as Tab, label: `Отчёты склада (${outdocs.length})` }] : []),
     ...(indocType === 'goods_supply_task' || indocType === 'goods_shipment_task'
       ? [{ id: 'photos' as Tab, label: 'Фото' }]
       : []),
@@ -506,7 +506,7 @@ export default function IndocDetailPage() {
         title={
           <>
             {(writerMode || pageHelp) && (
-              <HelpIconButton onClick={() => setPageHelpOpen((v) => !v)} size="lg" title="Пояснение к карточке документа" />
+              <HelpIconButton onClick={() => setPageHelpOpen((v) => !v)} size="lg" title="Пояснение к карточке задания" />
             )}
             {indocType ? dictEnum('indoc_type', indocType) : indocId}
             {indocState != null && stateDescrip && (
@@ -517,7 +517,7 @@ export default function IndocDetailPage() {
         subtitle={
           <PropList items={[
             { dictKey: 'indoc_id',    value: indocId },
-            { dictKey: 'created_at',  value: createdAt ? new Date(createdAt).toLocaleString('ru-RU') : undefined },
+            { dictKey: 'created_at__indoc',  value: createdAt ? new Date(createdAt).toLocaleString('ru-RU') : undefined },
             { dictKey: 'indoc_txt',   value: indocTxt },
             { dictKey: 'qual_type',   value: shipmentQualType, newLine: true , valueColor: 'blue'},
             { dictKey: 'picking_only', value: shipmentPickingOnly , valueColor: 'blue'},
@@ -532,7 +532,7 @@ export default function IndocDetailPage() {
         <InlineHelpPanel
           content={pageHelp?.content ?? ''}
           marker={`page:${PAGE_HELP_KEY}`}
-          markerTemplate={`## Карточка входящего документа {#page:${PAGE_HELP_KEY}}`}
+          markerTemplate={`## Карточка задания {#page:${PAGE_HELP_KEY}}`}
           isOpen={pageHelpOpen}
           onClose={() => setPageHelpOpen(false)}
           isAuthoringMode={writerMode}

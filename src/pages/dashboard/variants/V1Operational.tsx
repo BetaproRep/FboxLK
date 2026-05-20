@@ -75,7 +75,7 @@ function DocsItemsCard({
     <div className={`rounded-lg border ${borderClass} ${bgClass} px-4 py-3 text-sm shadow-sm`}>
       <div className={`grid grid-cols-[minmax(0,1fr)_72px_96px] gap-x-4 mb-2 font-semibold ${textClass}`}>
         <span>{title}</span>
-        <span className="tabular-nums text-right">документов</span>
+        <span className="tabular-nums text-right">заданий</span>
         <span className="tabular-nums text-right">товаров</span>
       </div>
       <div className="grid grid-cols-[minmax(0,1fr)_72px_96px] gap-x-4 gap-y-1.5">

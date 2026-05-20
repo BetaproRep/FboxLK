@@ -22,7 +22,7 @@ export const indocsApi = {
     return data
   },
 
-  // Возвращает { success, indoc: {} } — indoc содержит полный json документа
+  // Возвращает { success, indoc: {} } — indoc содержит полный json задания
   getJson: async (indocId: string): Promise<{ success: boolean; indoc: IndocJson }> => {
     const { data } = await apiClient.get(`/indocs/${encodeURIComponent(indocId)}/json`)
     return data

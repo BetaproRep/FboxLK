@@ -345,7 +345,7 @@ export default function OrdersListPage() {
 
         <input
           className="input w-56"
-          placeholder="Поиск по списку..."
+          placeholder="Быстрый поиск..."
           value={search}
           onChange={(e) => { setSearch(e.target.value); sessionStorage.setItem('orders_search', e.target.value) }}
         />
