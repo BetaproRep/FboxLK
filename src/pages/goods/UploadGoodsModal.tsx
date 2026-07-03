@@ -96,7 +96,7 @@ export default function UploadGoodsModal({ isOpen, onClose, onUploaded }: Props)
 
     if (entries.length > 0) {
       const replace = await confirm(
-        `Уже загружено ${entries.length} товаров`,
+        `Уже подготовлено ${entries.length} товаров`,
         { description: 'Заменить их данными из буфера?', confirmLabel: 'Заменить', cancelLabel: 'Добавить к существующим', variant: 'primary' }
       )
       setEntries(replace ? newEntries : [...entries, ...newEntries])

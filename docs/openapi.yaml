@@ -1429,6 +1429,9 @@ tags:
   - name: Настройки аккаунта
     description: |-
       ''
+  - name: Аналитические отчёты
+    description: |-
+      Табличные отчёты для Excel (Power Query) и Google Таблиц. Каталог параметров и колонок — [GET /reports/catalog](#tag/Analiticheskie-otchyoty/operation/common_interface_reports_catalog).
   - name: Справочники
     description: |+
       
@@ -5599,6 +5602,71 @@ paths:
                 $ref: '#/components/schemas/Error'
       tags:
         - Исходящие документы
+  /reports/catalog:
+    get:
+      operationId: common_interface_reports_catalog
+      summary: Каталог аналитических отчётов
+      description: |-
+        ## get /reports/catalog
+
+        Возвращает список доступных `report_id`, параметры запроса и канонический порядок колонок.
+        Используется клиентами Excel (Power Query), Google Таблиц и личным кабинетом.
+      parameters: []
+      responses:
+        '200':
+          description: The request has succeeded.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/reports_catalog_resp'
+        default:
+          description: An unexpected error response.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      tags:
+        - Аналитические отчёты
+      security:
+        - BasicAuth: []
+  /reports:
+    post:
+      operationId: common_interface_reports_post
+      summary: Получить данные аналитического отчёта
+      description: |-
+        ## post /reports
+
+        Возвращает табличные данные отчёта. Строки — в массиве `items` (объекты с ключами из `columns` каталога).
+        Для больших отчётов используйте `page_size` и `page_token` / `page_next_token` ([Пагинация](#paging_desc)).
+
+        Пример запроса:
+        ```json
+        {"report_id": 1, "from_date": "2026-05-25", "to_date": "2026-05-28", "page_size": 5000}
+        ```
+      parameters: []
+      responses:
+        '200':
+          description: The request has succeeded.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/reports_data_resp'
+        default:
+          description: An unexpected error response.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      tags:
+        - Аналитические отчёты
+      security:
+        - BasicAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/reports_data_req'
   /settings:
     get:
       operationId: common_interface_settings_get
@@ -13646,6 +13714,213 @@ components:
             * `22` - 22%
           title: Ставка НДС
           default: 22
+    report_param_def:
+      type: object
+      required:
+        - name
+        - type
+        - label
+      properties:
+        name:
+          type: string
+          title: Имя параметра в JSON запроса
+        type:
+          type: string
+          enum:
+            - date
+            - datetime
+            - string
+            - integer
+            - boolean
+            - select
+          title: Тип параметра
+        required:
+          type: boolean
+          default: false
+          title: Обязательный параметр
+        label:
+          type: string
+          title: Подпись в UI
+        description:
+          type: string
+          title: Пояснение
+        options:
+          type: array
+          items:
+            type: object
+            properties:
+              value: {}
+              label:
+                type: string
+            required:
+              - value
+              - label
+          title: Варианты для select
+        default: {}
+    report_column_def:
+      type: object
+      required:
+        - key
+        - title
+        - type
+      properties:
+        key:
+          type: string
+          title: Ключ в объекте items
+        title:
+          type: string
+          title: Заголовок колонки
+        type:
+          type: string
+          enum:
+            - string
+            - integer
+            - number
+            - boolean
+            - date
+            - datetime
+          title: Тип значения
+    report_catalog_entry:
+      type: object
+      required:
+        - report_id
+        - name
+        - params
+        - columns
+      properties:
+        report_id:
+          type: integer
+          format: int32
+          title: Идентификатор отчёта
+        name:
+          type: string
+          title: Название отчёта
+        description:
+          type: string
+          title: Описание
+        params:
+          type: array
+          items:
+            $ref: '#/components/schemas/report_param_def'
+          title: Параметры запроса
+        columns:
+          type: array
+          items:
+            $ref: '#/components/schemas/report_column_def'
+          title: Колонки результата
+        default_page_size:
+          type: integer
+          format: int32
+          title: Рекомендуемый page_size
+        max_rows_hint:
+          type: integer
+          format: int32
+          title: Ориентировочный максимум строк
+    reports_catalog_resp:
+      type: object
+      required:
+        - success
+        - reports
+      properties:
+        success:
+          type: boolean
+          enum:
+            - true
+          title: Признак успешного запроса
+        reports:
+          type: array
+          items:
+            $ref: '#/components/schemas/report_catalog_entry'
+          title: Каталог отчётов
+    reports_data_req:
+      type: object
+      required:
+        - report_id
+      properties:
+        report_id:
+          type: integer
+          format: int32
+          title: Идентификатор отчёта
+        page_size:
+          type: integer
+          format: int32
+          default: 5000
+          description: |-
+            Максимум строк на странице. Рекомендуется 1000–10000 для Google Таблиц.
+            [см. Пагинация в запросах](#paging_desc)
+          title: Размер страницы
+        page_token:
+          type: string
+          description: |-
+            Значение `page_next_token` из предыдущего ответа.
+            [см. Пагинация в запросах](#paging_desc)
+          title: Токен страницы
+        from_date:
+          allOf:
+            - $ref: '#/components/schemas/date'
+          title: Начало периода (пример для report_id=1)
+        to_date:
+          allOf:
+            - $ref: '#/components/schemas/date'
+          title: Конец периода (пример для report_id=1)
+      additionalProperties: true
+      description: |-
+        Дополнительные поля зависят от `report_id` (см. каталог `/reports/catalog`).
+    report_type_meta:
+      type: object
+      required:
+        - name
+        - type
+      properties:
+        name:
+          type: string
+          title: Имя колонки
+        type:
+          type: string
+          title: Тип колонки
+    reports_data_resp:
+      type: object
+      required:
+        - success
+      properties:
+        success:
+          type: boolean
+          enum:
+            - true
+          title: Признак успешного запроса
+        report_id:
+          type: integer
+          format: int32
+          title: Идентификатор отчёта
+        types:
+          type: array
+          items:
+            $ref: '#/components/schemas/report_type_meta'
+          description: Устаревшие метаданные колонок; предпочтителен каталог.
+          title: Типы колонок (legacy)
+        items:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+          title: Строки отчёта
+        headers:
+          type: array
+          items:
+            type: string
+          title: Заголовки (опциональный формат rows)
+        rows:
+          type: array
+          items:
+            type: array
+            items: {}
+          title: Строки матрицей (опционально)
+        page_next_token:
+          $ref: '#/components/schemas/tpage_next_token'
+        total_count:
+          type: integer
+          format: int64
+          title: Общее число строк (если известно)
   securitySchemes:
     BasicAuth:
       type: http

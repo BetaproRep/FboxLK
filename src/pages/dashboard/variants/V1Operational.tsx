@@ -7,13 +7,14 @@ import { fmt } from '../utils/fmt'
 import InlineHelpPanel, { HelpIconButton } from '@/components/ui/InlineHelpPanel'
 import { getTabHelp } from '@/content/pageHelp'
 import { usePageHelpWriterMode } from '@/content/authoringState'
-import type {
-  DashboardOrdersCard,
-  DashboardGoodsSupplyCard,
-  DashboardGoodsShipmentCard,
-  DashboardReport,
-  DocsItems,
+import {
+  resolveDashboardGoogleSheets,
+  type DashboardOrdersCard,
+  type DashboardGoodsSupplyCard,
+  type DashboardGoodsShipmentCard,
+  type DocsItems,
 } from '@/api/dashboard'
+import AnalyticsReportsCard from '../components/AnalyticsReportsCard'
 
 function isPresent<T>(v: T | undefined | null): v is T {
   if (v === undefined || v === null) return false
@@ -139,68 +140,6 @@ function GoodsShipmentCard({ data }: { data: DashboardGoodsShipmentCard }) {
   )
 }
 
-function ReportDownloadButton({ report }: { report: DashboardReport }) {
-  const [loading, setLoading] = useState(false)
-
-  async function handleClick() {
-    if (loading) return
-    setLoading(true)
-    try {
-      const res = await fetch(report.url)
-      const blob = await res.blob()
-      const url = URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = report.file_name
-      a.click()
-      URL.revokeObjectURL(url)
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  return (
-    <button
-      type="button"
-      onClick={handleClick}
-      disabled={loading}
-      className="flex items-start gap-2 w-full text-left text-violet-900/90 hover:text-violet-700 disabled:opacity-60 disabled:cursor-wait"
-    >
-      {loading ? (
-        <Spinner className="w-4 h-4 text-violet-700 shrink-0" />
-      ) : (
-        <svg
-          className="w-4 h-4 shrink-0"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
-          />
-        </svg>
-      )}
-      <span className="min-w-0 whitespace-normal break-words">{report.file_name}</span>
-    </button>
-  )
-}
-
-function ReportsCard({ reports }: { reports: DashboardReport[] }) {
-  return (
-    <div className="rounded-lg border border-violet-200 bg-violet-50 px-4 py-3 text-sm shadow-sm">
-      <div className="font-semibold text-violet-900 mb-2">Скачать отчеты в Excel</div>
-      <div className="space-y-1.5">
-        {reports.map((r) => (
-          <ReportDownloadButton key={r.url} report={r} />
-        ))}
-      </div>
-    </div>
-  )
-}
-
 export default function V1Operational() {
   const writerMode = usePageHelpWriterMode()
   const tabHelp = getTabHelp('dashboard', 'v1')
@@ -231,8 +170,16 @@ export default function V1Operational() {
   if (isPresent(data.cards?.goods_shipment)) {
     cards.push(<GoodsShipmentCard key="goods_shipment" data={data.cards!.goods_shipment!} />)
   }
-  if (isPresent(data.reports)) {
-    cards.push(<ReportsCard key="reports" reports={data.reports!} />)
+  const googleSheets = resolveDashboardGoogleSheets(data)
+  const excelReports = data.reports ?? []
+  if (googleSheets || excelReports.length > 0) {
+    cards.push(
+      <AnalyticsReportsCard
+        key="analytics-reports"
+        googleSheets={googleSheets}
+        excelReports={excelReports}
+      />,
+    )
   }
 
   const tables: ReactNode[] = []

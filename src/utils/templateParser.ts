@@ -195,13 +195,48 @@ function getOrCreateDeep(obj: Record<string, unknown>, parts: string[]): Record<
   return cur
 }
 
+function isEmptyCell(raw: unknown): boolean {
+  return raw === undefined || raw === null || String(raw).trim() === ''
+}
+
+const NUM_CURRENCY_SYMBOLS_RE = /[$¢€£¥￥₽₩₹₺₴₸₾฿₫₱₪₦₡₲₵₭₮₼₿﷼]/g
+const NUM_CURRENCY_WORDS_RE = /(?:руб(?:\.|ль|ля|лей)?|р\.?|rub|eur|euro|usd|dollar|dollars|cny|rmb|yuan|юан[ьяей]?|元|jpy|yen|gbp|pound|chf|franc|cad|aud|nzd|hkd|sgd|krw|won|inr|rupee|try|lira|kzt|тенге|uah|грн\.?|aed|sar|qar|ils|thb|vnd|pln|czk|sek|nok|dkk|huf|ron|brl|mxn|zar)/gi
+
+/** Разобрать число из Excel-строки с пробелами тысяч, запятой и валютой */
+function parseFlexibleNumber(str: string): number | null {
+  const compact = str
+    .replace(NUM_CURRENCY_SYMBOLS_RE, '')
+    .replace(NUM_CURRENCY_WORDS_RE, '')
+    .replace(/[\s\u00A0\u202F]/g, '')
+
+  if (!/^[+-]?\d[\d.,]*$/.test(compact)) return null
+
+  const lastCommaIdx = compact.lastIndexOf(',')
+  const lastDotIdx = compact.lastIndexOf('.')
+  let normalized = compact
+
+  if (lastCommaIdx !== -1 && lastDotIdx !== -1) {
+    const decimalSeparator = lastCommaIdx > lastDotIdx ? ',' : '.'
+    const thousandSeparator = decimalSeparator === ',' ? '.' : ','
+    normalized = compact.replace(new RegExp(`\\${thousandSeparator}`, 'g'), '')
+    if (decimalSeparator === ',') normalized = normalized.replace(',', '.')
+  } else if (lastCommaIdx !== -1) {
+    normalized = compact.replace(',', '.')
+  }
+
+  if (!/^[+-]?\d+(?:\.\d+)?$/.test(normalized)) return null
+
+  const n = Number(normalized)
+  return Number.isFinite(n) ? n : null
+}
+
 /** Привести значение ячейки к нужному типу */
 function coerce(
   raw: unknown,
   type: ColumnSchema['type'],
   errors: Array<{ message: string }>
 ): { value: unknown } | null {
-  if (raw === undefined || raw === null || raw === '') return null
+  if (isEmptyCell(raw)) return null
 
   const str = String(raw).trim()
 
@@ -216,8 +251,8 @@ function coerce(
     }
 
     case 'num': {
-      const n = parseFloat(str)
-      if (isNaN(n)) { errors.push({ message: `ожидается число, получено "${str}"` }); return null }
+      const n = parseFlexibleNumber(str)
+      if (n === null) { errors.push({ message: `ожидается число, получено "${str}"` }); return null }
       return { value: n }
     }
 
@@ -225,7 +260,7 @@ function coerce(
       const lo = str.toLowerCase()
       if (BOOL_TRUE_VALUES.includes(lo))  return { value: true }
       if (BOOL_FALSE_VALUES.includes(lo)) return { value: false }
-      errors.push({ message: `ожидается булево значение, получено "${str}"` })
+      errors.push({ message: `ожидается булево значение (1, да / 0, нет), получено "${str}"` })
       return null
     }
 
@@ -356,7 +391,7 @@ export function parseTemplate<T = Record<string, unknown>>(
     for (let i = 2; i < rows.length; i++) {
       const row = rows[i] as unknown[]
       const keyVal = row[keyColIdx]
-      const isNewObject = keyVal !== '' && keyVal !== undefined && keyVal !== null && keyVal !== prevKeyVal
+      const isNewObject = !isEmptyCell(keyVal) && keyVal !== prevKeyVal
 
       if (isNewObject) {
         if (currentRows.length > 0) groups.push({ fileRowStart: i - currentRows.length, rows: currentRows })
@@ -386,11 +421,11 @@ export function parseTemplate<T = Record<string, unknown>>(
 
       let rawValue = firstRow[colIdx]
 
-      if ((rawValue === '' || rawValue === undefined || rawValue === null) && schema.default !== undefined) {
+      if (isEmptyCell(rawValue) && schema.default !== undefined) {
         rawValue = schema.default
       }
 
-      if (rawValue === '' || rawValue === undefined || rawValue === null) {
+      if (isEmptyCell(rawValue)) {
         if (schema.required) {
           itemErrors.push({ row: group.fileRowStart, field: schema.path, label: labels[colIdx] ?? schema.path, message: 'обязательное поле не заполнено' })
         }
@@ -429,7 +464,7 @@ export function parseTemplate<T = Record<string, unknown>>(
         for (const schema of colSchemas) {
           const colIdx = schemas.indexOf(schema)
           const rawValue = row[colIdx]
-          const isEmpty = rawValue === '' || rawValue === undefined || rawValue === null
+          const isEmpty = isEmptyCell(rawValue)
 
           if (isEmpty) {
             if (schema.default !== undefined) {

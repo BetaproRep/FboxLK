@@ -184,6 +184,47 @@ describe('parseOrderTemplate', () => {
     expect(errors[0].label).toBe('Служба доставки')  // строка 0, колонка 1
   })
 
+  it('num: принимает число с пробелами, запятой и валютой', () => {
+    const rows = [
+      HEADER_ROW,
+      DSL_ROW,
+      ['ORD-1', 101, '', '', 'AR-1', '2 250,54 ₽', '1 100,50 EUR', '', '', ''],
+    ]
+    const { orders, errors } = parseOrderTemplate(rows)
+    const goods = (orders[0] as Record<string, any>).goods
+    expect(errors).toHaveLength(0)
+    expect(goods[0].declared_value).toBe(2250.54)
+    expect(goods[0].cod).toBe(1100.5)
+  })
+
+  it('num: принимает европейский и китайский форматы валют', () => {
+    const rows = [
+      HEADER_ROW,
+      DSL_ROW,
+      ['ORD-1', 101, '', '', 'AR-1', '€2.250,54', 'RMB 2,250.54', '', '', ''],
+      ['', '', '', '', 'AR-2', '2 250,54 元', '¥2,250.54', '', '', ''],
+    ]
+    const { orders, errors } = parseOrderTemplate(rows)
+    const goods = (orders[0] as Record<string, any>).goods
+    expect(errors).toHaveLength(0)
+    expect(goods[0].declared_value).toBe(2250.54)
+    expect(goods[0].cod).toBe(2250.54)
+    expect(goods[1].declared_value).toBe(2250.54)
+    expect(goods[1].cod).toBe(2250.54)
+  })
+
+  it('num: не принимает строку с лишним текстом как частичное число', () => {
+    const rows = [
+      HEADER_ROW,
+      DSL_ROW,
+      ['ORD-1', 101, '', '', 'AR-1', '2 250,54 ₽ остаток', 0, '', '', ''],
+    ]
+    const { errors } = parseOrderTemplate(rows)
+    expect(errors).toHaveLength(1)
+    expect(errors[0].field).toBe('goods[].declared_value')
+    expect(errors[0].message).toContain('ожидается число')
+  })
+
   it('bool: принимает "да", "YES", 1', () => {
     const dsl   = ['order_id:str*', 'delivery_id:int*', 'delivery.part_deliv:bool']
     const rows  = [['h1','h2','h3'], dsl, ['ORD-1', 101, 'да']]
@@ -215,6 +256,13 @@ describe('parseOrderTemplate', () => {
     it('default применяется если ячейка пуста, но другие поля строки заполнены', () => {
       // cod не заполнен → должен стать 0
       const rows = [H, dsl, ['ORD-1', 101, 'AR-1', 150, '']]
+      const { orders, errors } = parseOrderTemplate(rows)
+      expect(errors).toHaveLength(0)
+      expect(orders[0].goods![0].cod).toBe(0)
+    })
+
+    it('default применяется если ячейка содержит только пробелы', () => {
+      const rows = [H, dsl, ['ORD-1', 101, 'AR-1', 150, '   ']]
       const { orders, errors } = parseOrderTemplate(rows)
       expect(errors).toHaveLength(0)
       expect(orders[0].goods![0].cod).toBe(0)

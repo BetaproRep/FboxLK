@@ -1,0 +1,93 @@
+{
+  "success": true,
+  "reports": [
+    {
+      "report_id": 1,
+      "name": "Задания складу",
+      "description": "Список заданий складу",
+      "default_page_size": 5000,
+      "max_rows_hint": 65000,
+      "params": [
+        { "name": "from_date",  "type": "date", "required": true, "label": "С даты" },
+        { "name": "to_date",  "type": "date",  "required": true,  "label": "По дату" }
+      ],
+      "columns": [
+        { "key": "Дата создания", "title": "Дата создания", "type": "datetime" },
+        { "key": "№ задания", "title": "№ задания", "type": "string" },
+        { "key": "Тип задания", "title": "Тип задания", "type": "string" },
+        { "key": "Статус", "title": "Статус", "type": "string" },
+        { "key": "Примечание", "title": "Примечание", "type": "string" }
+      ]
+    },
+   
+    {
+      "report_id": 2,
+      "name": "Товары",
+      "description": "Справочник зарегистрированных товаров",
+      "default_page_size": 5000,
+      "max_rows_hint": 65000,
+      "params": [
+        { "name": "good_name_like",  "type": "string", "required": false, "label": "Название товара содержит" }
+      ],
+      "columns": [
+        { "key": "Артикул", "title": "Артикул", "type": "string" },
+        { "key": "Название", "title": "Название", "type": "string" },
+        { "key": "Вес, гр", "title": "Вес, гр", "type": "integer" },
+        { "key": "Длина, мм", "title": "Длина, мм", "type": "integer" },
+        { "key": "Ширина, мм", "title": "Ширина, мм", "type": "integer" },
+        { "key": "Высота, мм", "title": "Высота, мм", "type": "integer" },
+        { "key": "Штрихкоды (EAN)", "title": "Штрихкоды (EAN)", "type": "string" },
+        { "key": "Тип", "title": "Тип", "type": "string" },
+        { "key": "Типоразмер", "title": "Типоразмер", "type": "string" }
+      ]
+    },
+
+    {
+      "report_id": 3,
+      "name": "Остатки и резервы",
+      "description": "Текущие остатки и резервы товаров",
+      "default_page_size": 5000,
+      "max_rows_hint": 65000,
+      "params": [],
+      "columns": [
+        { "key": "Артикул", "title": "Артикул", "type": "string", "description": "Артикул товара" },
+        { "key": "Название", "title": "Название", "type": "string", "description": "Название товара" },
+        { "key": "Качество", "title": "Качество", "type": "string", "description": "Качество товара" },
+        { "key": "Свободный остаток", "title": "Свободный остаток", "type": "integer", "description": "Остаток товара доступный для продажи" },
+        { "key": "Складской остаток", "title": "Складской остаток", "type": "integer", "description": "Складской остаток товара" },
+        { "key": "Заказы в работе", "title": "Заказы в работе", "type": "integer", "description": "Товары требуемые для заказов в работе" },
+        { "key": "Заказы в ожидании", "title": "Заказы в ожидании", "type": "integer", "description": "Товары требуемые для заказов в ожидании" },
+        { "key": "Товары в подборе", "title": "Товары в подборе", "type": "integer", "description": "Товары по которым начат, но не завершен подбор для отгрузки" },
+        { "key": "Товары подобраны", "title": "Товары подобраны", "type": "integer", "description": "Товары по которым завершен подбор для отгрузки" },
+        { "key": "Карантин", "title": "Карантин", "type": "integer", "description": "Временно не доступные товары (не найдены на месте хранения)" },
+        { "key": "Длительное хранение", "title": "Длительное хранение", "type": "integer", "description": "Товары перемещенные на склад длительнного хранения" }
+      ]
+    },
+
+    {
+      "report_id": 4,
+      "name": "Контроль поставок",
+      "description": "Детальная информация по поставкам",
+      "default_page_size": 5000,
+      "max_rows_hint": 65000,
+      "params": [
+        { "name": "from_date",  "type": "date", "required": true, "label": "С даты" },
+        { "name": "to_date",  "type": "date",  "required": true,  "label": "По дату" }
+      ],
+      "columns": [
+        { "key": "Дата создания", "title": "Дата создания", "type": "datetime", "description": "Дата создания задания" },
+        { "key": "№ задания", "title": "№ задания", "type": "string" },
+        { "key": "Статус", "title": "Статус", "type": "string", "description": "Текущий статус задания" },
+        { "key": "Примечание", "title": "Примечание", "type": "string" },
+        { "key": "Кол-во наим.", "title": "Кол-во наим.", "type": "integer", "description": "Количество наименований товаров в поставке" },
+        { "key": "Кол-во экз.", "title": "Кол-во экз.", "type": "integer", "description": "Количество экземпляров товаров в поставке" },
+        { "key": "Вес кг.", "title": "Вес кг.", "type": "number", "description": "Общий вес товаров в поставке" },
+        { "key": "Объем м3", "title": "Объем м3", "type": "number", "description": "Общий объем товаров в поставке" },
+        { "key": "Прибытие поставки", "title": "Прибытие поставки", "type": "datetime", "description": "Дата прибытия товаров на склад" },
+        { "key": "Дата начала приемки", "title": "Дата начала приемки", "type": "datetime", "description": "Дата начала приема товаров на складе" },
+        { "key": "Дата окончания приемки", "title": "Дата окончания приемки", "type": "datetime", "description": "Дата окончания приема товаров на складе" },
+        { "key": "Приемка часы", "title": "Приемка часы", "type": "number", "description": "Количество часов приема товаров (дата окончания минус дата начала приемки)" }
+      ]
+    }  
+  ]
+}

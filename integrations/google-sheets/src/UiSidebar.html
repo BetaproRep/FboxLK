@@ -1,0 +1,594 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <base target="_top" />
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        font-size: 13px;
+        margin: 12px;
+        color: #1f2937;
+      }
+      h3 {
+        margin: 0 0 8px;
+        font-size: 14px;
+        color: #5b21b6;
+      }
+      section {
+        margin-bottom: 16px;
+        padding-bottom: 12px;
+        border-bottom: 1px solid #e5e7eb;
+      }
+      section:last-child {
+        border-bottom: none;
+      }
+      label {
+        display: block;
+        margin-top: 8px;
+        font-weight: 600;
+        font-size: 12px;
+      }
+      select,
+      input[type='text'],
+      input[type='password'],
+      input[type='date'],
+      input[type='number'] {
+        width: 100%;
+        box-sizing: border-box;
+        margin-top: 4px;
+        padding: 6px 8px;
+      }
+      .row {
+        display: flex;
+        gap: 8px;
+        margin-top: 10px;
+      }
+      .row button {
+        flex: 1;
+      }
+      button {
+        margin-top: 10px;
+        width: 100%;
+        padding: 8px;
+        background: #5b21b6;
+        color: #fff;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        font-weight: 600;
+        font-size: 13px;
+      }
+      button.secondary {
+        background: #fff;
+        color: #5b21b6;
+        border: 1px solid #c4b5fd;
+      }
+      button:disabled {
+        opacity: 0.6;
+        cursor: wait;
+      }
+      .status {
+        margin-top: 8px;
+        min-height: 1.2em;
+        font-size: 12px;
+        color: #4b5563;
+        line-height: 1.4;
+        white-space: pre-line;
+      }
+      .status.error {
+        color: #b91c1c;
+      }
+      .status.ok {
+        color: #047857;
+      }
+      .load-status-line {
+        display: flex;
+        align-items: flex-start;
+        gap: 4px;
+        flex-wrap: wrap;
+      }
+      #loadStatusMain {
+        flex: 1;
+        min-width: 0;
+      }
+      .profile-toggle {
+        margin: 0;
+        padding: 0 4px;
+        width: auto;
+        background: none;
+        color: #6b7280;
+        border: none;
+        font-size: 14px;
+        line-height: 1.4;
+        font-weight: 700;
+        cursor: pointer;
+      }
+      .profile-toggle:hover {
+        color: #5b21b6;
+      }
+      .profile-toggle.hidden {
+        display: none;
+      }
+      #loadStatusProfile {
+        display: none;
+        margin-top: 6px;
+        padding-top: 6px;
+        border-top: 1px solid #e5e7eb;
+        font-size: 11px;
+        color: #6b7280;
+        white-space: pre-line;
+      }
+      #loadStatusProfile.visible {
+        display: block;
+      }
+      #reportBlock.hidden,
+      #loggedInBlock.hidden {
+        display: none;
+      }
+      #reportDescription {
+        margin: 8px 0 0;
+        font-size: 12px;
+        color: #374151;
+        line-height: 1.4;
+      }
+      #params fieldset {
+        border: 1px solid #e5e7eb;
+        border-radius: 6px;
+        padding: 8px;
+        margin-top: 8px;
+      }
+      .params-empty {
+        margin: 0;
+        font-size: 12px;
+        color: #6b7280;
+        font-weight: normal;
+      }
+      legend {
+        font-weight: 600;
+        padding: 0 4px;
+        font-size: 12px;
+      }
+      .auth-fields {
+        display: flex;
+        gap: 10px;
+        align-items: flex-end;
+        margin-top: 8px;
+      }
+      .auth-field label {
+        margin-top: 0;
+      }
+      .auth-field-partner {
+        flex: 0 0 14ch;
+        width: 14ch;
+      }
+      .auth-field-partner input {
+        width: 100%;
+        margin-top: 4px;
+      }
+      .auth-field-password {
+        flex: 1;
+        min-width: 0;
+      }
+      .auth-field-password input {
+        width: 100%;
+        margin-top: 4px;
+      }
+      .upgrade-link {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        margin-top: 6px;
+        color: #1d4ed8;
+        text-decoration: none;
+        font-weight: 600;
+      }
+      .upgrade-link:hover {
+        text-decoration: underline;
+      }
+      .upgrade-link.hidden {
+        display: none;
+      }
+    </style>
+  </head>
+  <body>
+    <section id="authSection">
+      <h3>Авторизация</h3>
+      <div class="auth-fields">
+        <div class="auth-field auth-field-partner">
+          <label for="partnerId">Код партнёра</label>
+          <input type="text" id="partnerId" autocomplete="username" maxlength="15" />
+        </div>
+        <div class="auth-field auth-field-password">
+          <label for="password">Пароль</label>
+          <input type="password" id="password" autocomplete="current-password" />
+        </div>
+      </div>
+
+      <div class="row">
+        <button type="button" id="btnLogin">Войти</button>
+        <button type="button" id="btnLogout" class="secondary" disabled>Выйти</button>
+      </div>
+      <div id="authStatus" class="status">Не выполнен</div>
+      <a id="authUpgradeLink" class="upgrade-link hidden" href="#" target="_blank" rel="noopener noreferrer">
+        Загрузить новую копию
+      </a>
+    </section>
+
+    <section id="loggedInBlock" class="hidden">
+      <button type="button" id="btnRefreshCatalog" class="secondary">Обновить каталог отчётов</button>
+      <div id="catalogStatus" class="status"></div>
+      <a id="catalogUpgradeLink" class="upgrade-link hidden" href="#" target="_blank" rel="noopener noreferrer">
+        Загрузить новую копию
+      </a>
+    </section>
+
+    <section id="reportBlock" class="hidden">
+      <h3>Отчёт</h3>
+      <label for="report">Тип отчёта</label>
+      <select id="report"></select>
+      <p id="reportDescription"></p>
+
+      <div id="params">
+        <fieldset>
+          <legend>Параметры</legend>
+          <div id="params-fields"></div>
+        </fieldset>
+      </div>
+
+      <button type="button" id="btnLoad">Обновить отчёт</button>
+      <div id="loadStatus" class="status">
+        <div class="load-status-line">
+          <span id="loadStatusMain"></span>
+          <button type="button" id="loadStatusToggle" class="profile-toggle hidden" title="Этапы загрузки">…</button>
+        </div>
+        <div id="loadStatusProfile"></div>
+        <a id="loadUpgradeLink" class="upgrade-link hidden" href="#" target="_blank" rel="noopener noreferrer">
+          Загрузить новую копию
+        </a>
+      </div>
+    </section>
+
+    <script>
+      let catalog = []
+      let progressTimer = null
+      let lastReportId = null
+
+      function setUpgradeLink(id, url) {
+        var link = document.getElementById(id)
+        if (url) {
+          link.href = url
+          link.classList.remove('hidden')
+        } else {
+          link.href = '#'
+          link.classList.add('hidden')
+        }
+      }
+
+      function setAuthStatus(text, kind, upgradeUrl) {
+        var el = document.getElementById('authStatus')
+        el.textContent = text || ''
+        el.className = 'status' + (kind ? ' ' + kind : '')
+        setUpgradeLink('authUpgradeLink', upgradeUrl)
+      }
+
+      function setCatalogStatus(text, kind, upgradeUrl) {
+        var el = document.getElementById('catalogStatus')
+        el.textContent = text || ''
+        el.className = 'status' + (kind ? ' ' + kind : '')
+        setUpgradeLink('catalogUpgradeLink', upgradeUrl)
+      }
+
+      function setLoadStatus(message, kind, profileLines, upgradeUrl) {
+        var root = document.getElementById('loadStatus')
+        var main = document.getElementById('loadStatusMain')
+        var toggle = document.getElementById('loadStatusToggle')
+        var profileEl = document.getElementById('loadStatusProfile')
+
+        main.textContent = message || ''
+        root.className = 'status' + (kind ? ' ' + kind : '')
+
+        if (profileLines && profileLines.length > 0) {
+          profileEl.textContent = 'Этапы (сек):\n' + profileLines.join('\n')
+          toggle.classList.remove('hidden')
+          toggle.setAttribute('aria-expanded', 'false')
+          profileEl.classList.remove('visible')
+        } else {
+          profileEl.textContent = ''
+          toggle.classList.add('hidden')
+          profileEl.classList.remove('visible')
+        }
+        setUpgradeLink('loadUpgradeLink', upgradeUrl)
+      }
+
+      function selectReportInList(reportId) {
+        if (!reportId || !catalog.length) return
+        var select = document.getElementById('report')
+        var found = catalog.some(function (r) {
+          return r.report_id === reportId
+        })
+        if (found) {
+          select.value = String(reportId)
+          onReportChange()
+        }
+      }
+
+      function setLoggedIn(loggedIn) {
+        document.getElementById('loggedInBlock').classList.toggle('hidden', !loggedIn)
+        document.getElementById('reportBlock').classList.toggle('hidden', !loggedIn)
+        document.getElementById('btnLogin').disabled = loggedIn
+        document.getElementById('btnLogout').disabled = !loggedIn
+        document.getElementById('partnerId').disabled = loggedIn
+        document.getElementById('password').disabled = loggedIn
+      }
+
+      function selectedEntry() {
+        var id = Number(document.getElementById('report').value)
+        return catalog.find(function (c) {
+          return c.report_id === id
+        })
+      }
+
+      function renderParams(entry, saved) {
+        var paramsBlock = document.getElementById('params')
+        var container = document.getElementById('params-fields')
+        container.innerHTML = ''
+
+        if (!entry || !entry.params || entry.params.length === 0) {
+          paramsBlock.classList.remove('hidden')
+          var empty = document.createElement('p')
+          empty.className = 'params-empty'
+          empty.textContent = 'Параметров нет'
+          container.appendChild(empty)
+          return
+        }
+
+        paramsBlock.classList.remove('hidden')
+
+        entry.params.forEach(function (p) {
+          var wrap = document.createElement('div')
+          var lbl = document.createElement('label')
+          lbl.textContent = p.label + (p.required ? ' *' : '')
+          lbl.setAttribute('for', 'param-' + p.name)
+
+          var input
+          if (p.type === 'date' || p.type === 'datetime') {
+            input = document.createElement('input')
+            input.type = 'date'
+          } else if (p.type === 'boolean') {
+            input = document.createElement('input')
+            input.type = 'checkbox'
+          } else if (p.type === 'select' && p.options) {
+            input = document.createElement('select')
+            p.options.forEach(function (opt) {
+              var o = document.createElement('option')
+              o.value = String(opt.value)
+              o.textContent = opt.label
+              input.appendChild(o)
+            })
+          } else {
+            input = document.createElement('input')
+            input.type = p.type === 'integer' ? 'number' : 'text'
+          }
+
+          input.id = 'param-' + p.name
+          if (saved && saved[p.name] !== undefined && saved[p.name] !== null) {
+            if (p.type === 'boolean') {
+              input.checked =
+                saved[p.name] === true || saved[p.name] === 'true' || saved[p.name] === 1
+            } else {
+              input.value = String(saved[p.name])
+            }
+          }
+
+          wrap.appendChild(lbl)
+          wrap.appendChild(input)
+          container.appendChild(wrap)
+        })
+      }
+
+      function collectParams(entry) {
+        var params = {}
+        if (!entry) return params
+        entry.params.forEach(function (p) {
+          var el = document.getElementById('param-' + p.name)
+          if (!el) return
+          if (p.type === 'boolean') {
+            params[p.name] = el.checked
+          } else {
+            params[p.name] = el.value
+          }
+        })
+        return params
+      }
+
+      function showDescription(entry) {
+        var el = document.getElementById('reportDescription')
+        el.textContent = entry && entry.description ? entry.description : ''
+      }
+
+      function fillReports() {
+        var select = document.getElementById('report')
+        select.innerHTML = ''
+        catalog.forEach(function (r) {
+          var opt = document.createElement('option')
+          opt.value = String(r.report_id)
+          opt.textContent = r.report_id + ' — ' + r.name
+          select.appendChild(opt)
+        })
+        if (catalog.length > 0) {
+          selectReportInList(lastReportId)
+        } else {
+          showDescription(null)
+        }
+      }
+
+      function onReportChange() {
+        var entry = selectedEntry()
+        showDescription(entry)
+        if (!entry) return
+        google.script.run
+          .withSuccessHandler(function (saved) {
+            renderParams(entry, saved)
+          })
+          .withFailureHandler(function () {
+            renderParams(entry, null)
+          })
+          .getSavedParams(entry.report_id)
+      }
+
+      function applyState(state) {
+        if (state.isLoggedIn) {
+          setLoggedIn(true)
+          catalog = state.catalog || []
+          lastReportId = state.lastReportId || null
+          if (state.partnerId) {
+            document.getElementById('partnerId').value = state.partnerId
+            setAuthStatus('Выполнен (партнёр ' + state.partnerId + ')', 'ok')
+          } else {
+            setAuthStatus('Выполнен', 'ok')
+          }
+          fillReports()
+        } else {
+          setLoggedIn(false)
+          catalog = []
+          setAuthStatus('Не выполнен')
+          document.getElementById('password').value = ''
+        }
+      }
+
+      function stopProgressPoll() {
+        if (progressTimer) {
+          clearInterval(progressTimer)
+          progressTimer = null
+        }
+      }
+
+      function startProgressPoll() {
+        stopProgressPoll()
+        progressTimer = setInterval(function () {
+          google.script.run
+            .withSuccessHandler(function (msg) {
+              if (msg) setLoadStatus(msg)
+            })
+            .getLoadProgressMessage()
+        }, 1500)
+      }
+
+      function init() {
+        setAuthStatus('Проверка…')
+        google.script.run
+          .withSuccessHandler(applyState)
+          .withFailureHandler(function (err) {
+            setAuthStatus('Ошибка: ' + err.message, 'error')
+            setLoggedIn(false)
+          })
+          .getSidebarState()
+      }
+
+      document.getElementById('btnLogin').addEventListener('click', function () {
+        var partnerId = document.getElementById('partnerId').value.trim()
+        var password = document.getElementById('password').value
+        setAuthStatus('Вход…')
+        document.getElementById('btnLogin').disabled = true
+        google.script.run
+          .withSuccessHandler(function (res) {
+            document.getElementById('btnLogin').disabled = false
+            if (res.ok) {
+              catalog = res.catalog || []
+              setLoggedIn(true)
+              lastReportId = res.lastReportId != null ? res.lastReportId : null
+              if (res.partnerId) {
+                document.getElementById('partnerId').value = res.partnerId
+              }
+              setAuthStatus('Выполнен (партнёр ' + (res.partnerId || partnerId) + ')', 'ok')
+              fillReports()
+              setCatalogStatus('', undefined, null)
+            } else {
+              setLoggedIn(false)
+              setAuthStatus(res.message || 'Ошибка входа', 'error', res.upgradeUrl)
+            }
+          })
+          .withFailureHandler(function (err) {
+            document.getElementById('btnLogin').disabled = false
+            setLoggedIn(false)
+            setAuthStatus('Ошибка: ' + err.message, 'error')
+          })
+          .loginSidebar(partnerId, password)
+      })
+
+      document.getElementById('btnLogout').addEventListener('click', function () {
+        google.script.run
+          .withSuccessHandler(function () {
+            catalog = []
+            setLoggedIn(false)
+            setAuthStatus('Не выполнен')
+            setCatalogStatus('', undefined, null)
+            setLoadStatus('', undefined, null, null)
+            document.getElementById('password').value = ''
+          })
+          .logoutSidebar()
+      })
+
+      document.getElementById('btnRefreshCatalog').addEventListener('click', function () {
+        setCatalogStatus('Обновление каталога…')
+        google.script.run
+          .withSuccessHandler(function (res) {
+            if (res.ok) {
+              catalog = res.catalog || []
+              fillReports()
+              selectReportInList(lastReportId)
+              setCatalogStatus('Каталог обновлён', 'ok', null)
+            } else {
+              setCatalogStatus(res.message || 'Ошибка', 'error', res.upgradeUrl)
+            }
+          })
+          .withFailureHandler(function (err) {
+            setCatalogStatus('Ошибка: ' + err.message, 'error')
+          })
+          .refreshCatalogSidebar()
+      })
+
+      document.getElementById('report').addEventListener('change', onReportChange)
+
+      document.getElementById('loadStatusToggle').addEventListener('click', function () {
+        var profileEl = document.getElementById('loadStatusProfile')
+        var toggle = document.getElementById('loadStatusToggle')
+        var open = profileEl.classList.toggle('visible')
+        toggle.setAttribute('aria-expanded', open ? 'true' : 'false')
+      })
+
+      document.getElementById('btnLoad').addEventListener('click', function () {
+        var entry = selectedEntry()
+        if (!entry) return
+        var params = collectParams(entry)
+        var btn = document.getElementById('btnLoad')
+        btn.disabled = true
+        setLoadStatus('Загрузка…')
+        startProgressPoll()
+
+        google.script.run
+          .withSuccessHandler(function (result) {
+            stopProgressPoll()
+            btn.disabled = false
+            if (result.ok) {
+              if (result.lastReportId != null) {
+                lastReportId = result.lastReportId
+                selectReportInList(lastReportId)
+              }
+              setLoadStatus(result.message, 'ok', result.profile, null)
+            } else {
+              setLoadStatus(result.message || 'Ошибка', 'error', null, result.upgradeUrl)
+            }
+          })
+          .withFailureHandler(function (err) {
+            stopProgressPoll()
+            btn.disabled = false
+            setLoadStatus('Ошибка: ' + err.message, 'error')
+          })
+          .loadReportFromSidebar({ report_id: entry.report_id, params: params })
+      })
+
+      init()
+    </script>
+  </body>
+</html>

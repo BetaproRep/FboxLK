@@ -1,0 +1,17 @@
+{
+  "name": "fbox-google-sheets-reports",
+  "version": "1.0.0",
+  "private": true,
+  "description": "FBox analytics — Google Sheets template and Apps Script library",
+  "scripts": {
+    "build": "esbuild src/index.ts --bundle --format=iife --global-name=FBoxCore --target=es2019 --outfile=dist/Code.js --legal-comments=none && node scripts/copy-dist-assets.mjs",
+    "push": "npm run build && clasp push",
+    "login": "clasp login"
+  },
+  "devDependencies": {
+    "@google/clasp": "^3.3.0",
+    "@types/google-apps-script": "^1.0.97",
+    "esbuild": "^0.25.0",
+    "typescript": "^5.7.2"
+  }
+}
