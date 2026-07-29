@@ -32,6 +32,13 @@ export function formatParamDisplay(p: ReportCatalogParam, raw: unknown): string 
       return `${parts[2]}.${parts[1]}.${parts[0].slice(-2)}`
     }
   }
+  if (p.type === 'select' && p.options) {
+    const rawStr = String(raw)
+    const opt = p.options.find((o) => String(o.value) === rawStr)
+    if (opt) {
+      return opt.label
+    }
+  }
   return String(raw)
 }
 

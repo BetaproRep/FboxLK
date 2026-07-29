@@ -4,7 +4,11 @@ import { getBasicAuth, clearCredentials } from '@/store/auth'
 import { appPath } from '@/utils/appPath'
 
 const runtimeBaseUrl = window.__APP_CONFIG__?.API_BASE_URL?.trim()
-const buildTimeBaseUrl = import.meta.env.VITE_API_BASE_URL?.trim()
+// Только для dev: локальный .env не должен попадать в прод-бандл и уводить
+// запросы на тестовый контур, если config.js не загрузился.
+const buildTimeBaseUrl = import.meta.env.DEV
+  ? import.meta.env.VITE_API_BASE_URL?.trim()
+  : undefined
 
 function normalizeApiBaseUrl(url: string): string {
   // Prevent mixed-content in production: when app is loaded over HTTPS,
